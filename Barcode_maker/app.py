@@ -2,23 +2,23 @@ import streamlit as st
 from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
-from reportlab.lib.colors import black, Color
+from reportlab.lib.colors import black, Color, HexColor
 from reportlab.lib.utils import ImageReader
 import io
 import barcode
 from barcode.writer import ImageWriter
 
-st.set_page_config(page_title="Warehouse Label Pro", page_icon="🏷️")
+st.set_page_config(page_title="Premium Warehouse Label", page_icon="🏷️")
 
-st.title("🏷️ Perfect Warehouse Label Pro")
+st.title("🏷️ Premium Warehouse Label Maker")
 
 logo_file = st.file_uploader(
-    "📁 Company Logo (PNG / JPG)", 
+    "📁 Company Logo (PNG / JPG)",
     type=["png", "jpg", "jpeg"]
 )
 
 barcode_text = st.text_input(
-    "🔢 Location Code", 
+    "🔢 Location Code",
     value="W13-07-07-01-02"
 )
 
@@ -28,7 +28,7 @@ with col1:
 with col2:
     label_height_mm = st.number_input("Label height (mm)", value=60.0)
 
-if st.button("✨ Generate Label", use_container_width=True, type="primary"):
+if st.button("✨ Generate Premium Label", use_container_width=True, type="primary"):
 
     if logo_file is None:
         st.error("Pehle logo upload karo.")
@@ -38,13 +38,13 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
         try:
             # ---------- LOGO ----------
             logo_img = Image.open(logo_file).convert("RGBA")
-            logo_buf = io.BytesIO()
-            logo_img.save(logo_buf, format="PNG")
-            logo_buf.seek(0)
-            logo_ir = ImageReader(logo_buf)
+            lbuf = io.BytesIO()
+            logo_img.save(lbuf, format="PNG")
+            lbuf.seek(0)
+            logo_ir = ImageReader(lbuf)
 
-            # ---------- BARCODE (HD) ----------
-            bar_buf = io.BytesIO()
+            # ---------- BARCODE ----------
+            bbuf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
             writer_opts = {
                 "write_text": False,
@@ -52,9 +52,9 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
                 "module_height": 18,
                 "module_width": 0.45,
             }
-            code128.render(writer_opts).save(bar_buf, format="PNG")
-            bar_buf.seek(0)
-            bar_ir = ImageReader(bar_buf)
+            code128.render(writer_opts).save(bbuf, format="PNG")
+            bbuf.seek(0)
+            bar_ir = ImageReader(bbuf)
 
             # ---------- CANVAS ----------
             lw = float(label_width_mm) * mm
@@ -65,39 +65,57 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
 
             margin = 3 * mm
 
-            # ===== LEFT: STYLISH ARROW BOX =====
+            # ===== LEFT: PREMIUM ARROW BOX =====
             left_w = lw * 0.26
             left_h = lh - 2 * margin
             left_x = margin
             left_y = margin
 
-            # outer box
+            # outer rounded rectangle
             c.setLineWidth(1.5)
-            c.rect(left_x, left_y, left_w, left_h)
+            radius = 3 * mm
+            c.roundRect(left_x, left_y, left_w, left_h, radius)
 
-            # animated style arrow (thoda slant)
+            # gradient‑like effect (2 shades)
+            main_col = HexColor("#111111")
+            light_col = HexColor("#444444")
+
+            # shadow background
+            c.setFillColor(light_col)
+            c.roundRect(left_x + 0.8*mm, left_y + 0.8*mm, left_w - 1.6*mm, left_h - 1.6*mm, radius, stroke=0, fill=1)
+
+            # arrow path (slightly curved, premium)
             mid_x = left_x + left_w / 2.0
-            top_y = left_y + left_h
-            bottom_y = left_y
+            top_y = left_y + left_h - 1.5*mm
+            bottom_y = left_y + 1.5*mm
 
-            head_h = left_h * 0.45
-            shaft_w = left_w * 0.33
-            base_h = left_h * 0.22
+            head_h = left_h * 0.46
+            shaft_w = left_w * 0.32
+            base_h = left_h * 0.24
 
             path = c.beginPath()
-            # shaft bottom
+            # bottom curve
             path.moveTo(mid_x - shaft_w/2, bottom_y)
             path.lineTo(mid_x + shaft_w/2, bottom_y)
-            # shaft sides
-            path.lineTo(mid_x + shaft_w/2, bottom_y + (left_h - head_h) * 0.95)
-            # little slant top
-            path.lineTo(left_x + left_w * 0.97, bottom_y + left_h - head_h)
+            # shaft
+            path.lineTo(mid_x + shaft_w/2, bottom_y + (left_h - head_h) * 0.97)
+            # right wing
+            path.curveTo(
+                left_x + left_w * 0.97, bottom_y + left_h - head_h * 0.95,
+                left_x + left_w * 0.97, bottom_y + left_h - head_h * 0.65,
+                left_x + left_w * 0.90, bottom_y + left_h - head_h
+            )
             path.lineTo(mid_x, top_y)
-            path.lineTo(left_x + left_w * 0.03, bottom_y + left_h - head_h)
-            path.lineTo(mid_x - shaft_w/2, bottom_y + (left_h - head_h) * 0.95)
+            # left wing
+            path.lineTo(left_x + left_w * 0.10, bottom_y + left_h - head_h)
+            path.curveTo(
+                left_x + left_w * 0.03, bottom_y + left_h - head_h * 0.65,
+                left_x + left_w * 0.03, bottom_y + left_h - head_h * 0.95,
+                mid_x - shaft_w/2, bottom_y + (left_h - head_h) * 0.97
+            )
             path.close()
 
-            c.setFillColor(black)
+            c.setFillColor(main_col)
             c.drawPath(path, stroke=0, fill=1)
 
             # ===== RIGHT: LOGO + BARCODE + TEXT =====
@@ -106,23 +124,23 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
             right_y = margin
             right_h = lh - 2 * margin
 
-            # outer box
+            # outer rounded rectangle
             c.setLineWidth(1.5)
-            c.rect(right_x, right_y, right_w, right_h)
+            c.roundRect(right_x, right_y, right_w, right_h, 3*mm)
 
             center_x = right_x + right_w / 2.0
 
             # ---- TOP: LOGO ----
-            logo_area_h = right_h * 0.32
-            logo_ratio = logo_img.height / logo_img.width
+            logo_area_h = right_h * 0.30
+            ratio = logo_img.height / logo_img.width
             logo_h = logo_area_h
-            logo_w = logo_h / logo_ratio
-            max_logo_w = right_w * 0.45
+            logo_w = logo_h / ratio
+            max_logo_w = right_w * 0.35
             if logo_w > max_logo_w:
                 logo_w = max_logo_w
-                logo_h = logo_w * logo_ratio
+                logo_h = logo_w * ratio
 
-            logo_y = right_y + right_h - logo_h - 2*mm
+            logo_y = right_y + right_h - logo_h - 3*mm
             logo_x = center_x - logo_w / 2.0
 
             c.drawImage(
@@ -134,20 +152,21 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
                 mask="auto"
             )
 
-            # ---- TOP UNDERLINE (full width) ----
-            top_line_y = logo_y - 2.5*mm
-            c.setLineWidth(2)
-            c.line(right_x + 3*mm, top_line_y, right_x + right_w - 3*mm, top_line_y)
+            # ---- TOP UNDERLINE ----
+            top_line_y = logo_y - 3*mm
+            c.setLineWidth(1.8)
+            c.setStrokeColor(HexColor("#333333"))
+            c.line(right_x + 4*mm, top_line_y, right_x + right_w - 4*mm, top_line_y)
 
-            # ---- BARCODE (center) ----
-            barcode_area_bottom = right_y + right_h * 0.32
+            # ---- BARCODE ----
+            barcode_area_bottom = right_y + right_h * 0.34
             barcode_area_top = top_line_y - 2*mm
             barcode_area_h = barcode_area_top - barcode_area_bottom
 
-            bar_w = right_w * 0.88
-            bar_h = barcode_area_h * 0.7
+            bar_w = right_w * 0.86
+            bar_h = barcode_area_h * 0.75
 
-            bar_x = center_x - bar_w/2
+            bar_x = center_x - bar_w / 2.0
             bar_y = barcode_area_bottom + (barcode_area_h - bar_h)
 
             c.drawImage(
@@ -160,33 +179,41 @@ if st.button("✨ Generate Label", use_container_width=True, type="primary"):
             )
 
             # ---- BOTTOM UNDERLINE ----
-            bottom_line_y = bar_y - 2.5*mm
-            c.setLineWidth(2)
-            c.line(right_x + 3*mm, bottom_line_y, right_x + right_w - 3*mm, bottom_line_y)
+            bottom_line_y = bar_y - 3*mm
+            c.setLineWidth(1.8)
+            c.line(right_x + 4*mm, bottom_line_y, right_x + right_w - 4*mm, bottom_line_y)
 
-            # ---- TEXT: CLEAR & FULLY VISIBLE ----
-            text_area_bottom = right_y + 3*mm
+            # ---- PREMIUM TEXT ----
+            text_area_bottom = right_y + 4*mm
             text_area_top = bottom_line_y - 1*mm
             text_center_y = (text_area_bottom + text_area_top) / 2.0
 
-            c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 26)   # large text
-            c.drawCentredString(center_x, text_center_y, barcode_text)
+            # thoda premium look: dark gray, thoda tracking
+            c.setFillColor(HexColor("#111111"))
+            c.setFont("Helvetica-Bold", 28)
 
-            # ===== SAVE PDF =====
+            # manual tracking (letter spacing) for premium feel
+            tracking = 0.6  # space between chars
+            x = center_x - (len(barcode_text) / 2.0) * (14 * tracking)
+            for ch in barcode_text:
+                c.drawString(x, text_center_y, ch)
+                x += 14 * tracking
+
+            # ===== SAVE =====
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Label ready ✅ (Logo + Text visible)")
+            st.success("✅ Premium label ready!")
             st.download_button(
                 "⬇️ Download PDF",
                 data=pdf_bytes,
-                file_name=f"label_{barcode_text}.pdf",
+                file_name=f"premium_label_{barcode_text}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
 
         except Exception as e:
             st.error(f"Error: {e}")
+
