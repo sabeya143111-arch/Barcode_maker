@@ -49,6 +49,7 @@ def load_logo():
 st.set_page_config(page_title="Warehouse Label", page_icon="🏷️")
 st.title("🏷️ Warehouse Label Maker (Odoo Ready)")
 
+# ===== INPUTS =====
 barcode_text = st.text_input(
     "Location Code (jaise: W13-07-07-01-02)",
     value="W13-07-07-01-02",
@@ -106,7 +107,7 @@ if st.button("Generate Label", use_container_width=True):
             c.setStrokeColor(black)
             c.roundRect(left_x, left_y, left_w, left_h, radius)
 
-            # Light grey background for contrast in B&W
+            # Light grey background for contrast
             bg_grey = HexColor("#DDDDDD")
             c.setFillColor(bg_grey)
             c.roundRect(
@@ -119,7 +120,7 @@ if st.button("Generate Label", use_container_width=True):
                 fill=1,
             )
 
-            # Solid black arrow (high contrast)
+            # Solid black arrow
             mid_x = left_x + left_w / 2.0
             top_y = left_y + left_h - 2.0 * mm
             bottom_y = left_y + 2.0 * mm
@@ -206,8 +207,8 @@ if st.button("Generate Label", use_container_width=True):
                 mask="auto",
             )
 
-            # ---- BOTTOM LINE ----
-            bottom_line_y = bar_y - 2.0 * mm
+            # ---- UPPER TEXT LINE ----
+            bottom_line_y = bar_y - 3.5 * mm
             c.setLineWidth(2)
             c.line(
                 right_x + 3 * mm,
@@ -216,20 +217,32 @@ if st.button("Generate Label", use_container_width=True):
                 bottom_line_y,
             )
 
-            # ---- TEXT: AUTO FIT, FULL WIDTH ----
-            text_area_bottom = right_y + 4 * mm
-            text_area_top = bottom_line_y - 2 * mm
-            text_center_y = (text_area_bottom + text_area_top) / 2.0
+            # ==== TEXT BAND (do line ke beech) ====
+            band_bottom_y = right_y + 4 * mm        # lower underline y
+            band_top_y = bottom_line_y - 1.5 * mm   # upper line se gap
+            text_center_y = (band_top_y + band_bottom_y) / 2.0
 
+            # Lower underline line
+            c.setLineWidth(2)
+            c.line(
+                right_x + 3 * mm,
+                band_bottom_y,
+                right_x + right_w - 3 * mm,
+                band_bottom_y,
+            )
+
+            # ---- TEXT: AUTO FIT INSIDE BAND ----
             c.setFillColor(black)
             base_font = "Helvetica-Bold"
 
-            # Max usable width (chota margin only)
+            # usable width
             max_width = right_w - 6 * mm
+            # usable height
+            band_height = band_top_y - band_bottom_y
+            max_font_from_height = abs(band_height) * 0.9
 
-            # Start big, reduce till fit
-            size = 40
-            while size > 16:
+            size = int(min(42, max_font_from_height))
+            while size > 12:
                 w = c.stringWidth(barcode_text, base_font, size)
                 if w <= max_width:
                     break
@@ -244,7 +257,7 @@ if st.button("Generate Label", use_container_width=True):
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("✅ Label ready! Text auto-fit, logo bada, arrow print-friendly.")
+            st.success("✅ Label ready! Text band me fit, logo bada, arrow print-friendly.")
             st.download_button(
                 "⬇️ Download PDF",
                 data=pdf_bytes,
