@@ -21,22 +21,23 @@ bar_file = st.file_uploader(
     type=["png", "jpg", "jpeg"]
 )
 
-label_width_mm = st.number_input("Label width (mm)", value=50)
-label_height_mm = st.number_input("Label height (mm)", value=30)
+label_width_mm = st.number_input("Label width (mm)", value=50.0)
+label_height_mm = st.number_input("Label height (mm)", value=30.0)
 
 if st.button("Generate Label"):
 
     if logo_file is None or bar_file is None:
         st.error("Dono files upload karo: logo + barcode image.")
     else:
-        # Images load
         logo_img = Image.open(logo_file).convert("RGBA")
         bar_img = Image.open(bar_file).convert("RGBA")
 
-        # Label PDF canvas
-        label_w, label_h = label_width_mm * mm, label_height_mm * mm
+        # ----- canvas size (as float) -----
+        lw = float(label_width_mm) * mm
+        lh = float(label_height_mm) * mm
+
         pdf_buffer = io.BytesIO()
-        c = canvas.Canvas(pdf_buffer, pagesize=(label_w, label_h))
+        c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
 
         def pil_to_buf(img):
             buf = io.BytesIO()
@@ -48,20 +49,20 @@ if st.button("Generate Label"):
         bar_buf = pil_to_buf(bar_img)
 
         # ---- Sizes ----
-        logo_w = 20 * mm
+        logo_w = 20.0 * mm
         logo_ratio = logo_img.height / logo_img.width
         logo_h = logo_w * logo_ratio
 
-        bar_w = 40 * mm
+        bar_w = 40.0 * mm
         bar_ratio = bar_img.height / bar_img.width
         bar_h = bar_w * bar_ratio
 
         # ---- Positions ----
-        logo_x = (label_w - logo_w) / 2
-        logo_y = label_h - logo_h - 5 * mm
+        logo_x = (lw - logo_w) / 2.0
+        logo_y = lh - logo_h - 5.0 * mm
 
-        bar_x = (label_w - bar_w) / 2
-        bar_y = 5 * mm
+        bar_x = (lw - bar_w) / 2.0
+        bar_y = 5.0 * mm
 
         # Draw
         c.drawImage(ImageReader(logo_buf), logo_x, logo_y,
