@@ -10,18 +10,26 @@ from barcode.writer import ImageWriter
 
 st.set_page_config(page_title="Perfect Warehouse Label", page_icon="🏷️")
 
-st.title("🏷️ Perfect Warehouse Label Maker")
-st.caption("Medium size labels - Inventory ke liye")
+st.title("🏷️ Perfect Warehouse Label Maker - HD Print")
+st.caption("Exact aapke warehouse label jaisa - Print ready!")
 
-# ===== SIDEBAR - Settings =====
+# ===== SIDEBAR - Fine Tuning =====
 with st.sidebar:
-    st.header("Label Settings")
+    st.header("⚙️ Label Settings")
     
     label_width_mm = st.number_input("Label width (mm)", value=210.0, min_value=100.0)
     label_height_mm = st.number_input("Label height (mm)", value=80.0, min_value=50.0)
     
-    # Logo size control
-    logo_height_percent = st.slider("Logo size (%)", min_value=10, max_value=40, value=25)
+    st.divider()
+    
+    # DPI for print quality
+    dpi = st.select_slider("Print Quality (DPI)", options=[300, 600, 1200], value=1200)
+    
+    # Logo size
+    logo_height_percent = st.slider("Logo size (%)", min_value=15, max_value=35, value=22)
+    
+    # Barcode size
+    barcode_scale = st.slider("Barcode size scale", min_value=0.7, max_value=1.2, value=1.0, step=0.1)
     
     # Arrow color
     arrow_color_opt = st.selectbox("Arrow color", ["Orange", "Teal", "Blue", "Red"])
@@ -32,49 +40,62 @@ with st.sidebar:
         "Red": Color(1, 0.3, 0.3)
     }
     arrow_color = color_map[arrow_color_opt]
+    
+    st.divider()
+    st.info("💡 Print resolution: 1200 DPI = Crystal clear barcode")
 
-# ===== MAIN UPLOAD =====
-logo_file = st.file_uploader(
-    "📁 Company Logo upload karo (PNG / JPG)",
-    type=["png", "jpg", "jpeg"]
-)
+# ===== MAIN INPUT =====
+col1, col2 = st.columns(2)
 
-barcode_text = st.text_input(
-    "🔢 Product Code likho",
-    value="W13-07-13-01-03",
-    placeholder="Jaise: W102-07-01-01-03"
-)
+with col1:
+    logo_file = st.file_uploader(
+        "📁 Company Logo (PNG/JPG)",
+        type=["png", "jpg", "jpeg"],
+        help="High resolution logo best hai"
+    )
+
+with col2:
+    barcode_text = st.text_input(
+        "🔢 Product Code",
+        value="W13-07-07-01-02",
+        placeholder="Jaise: W102-07-01-01-03"
+    )
 
 # ===== GENERATE BUTTON =====
-if st.button("✨ Generate Label", use_container_width=True):
+if st.button("✨ Generate HD Label", use_container_width=True, type="primary"):
 
     if logo_file is None:
-        st.error("❌ Pehle logo upload karo bhai!")
+        st.error("❌ Logo upload karo!")
     elif not barcode_text.strip():
         st.error("❌ Product code likho!")
     else:
         try:
-            with st.spinner("Label ban raha hai..."):
-                # --------- Logo load karo ----------
+            with st.spinner("🔄 HD Label ban raha hai..."):
+                # --------- Logo load ----------
                 logo_img = Image.open(logo_file).convert("RGBA")
 
-                # --------- Barcode generate karo (High DPI) ----------
+                # --------- ULTRA HIGH DPI Barcode ----------
                 bar_buf = io.BytesIO()
                 code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
+                
+                # HIGH QUALITY SETTINGS
                 writer_opts = {
                     "write_text": False,
-                    "dpi": 600,
-                    "module_height": 15,
+                    "dpi": dpi,  # 1200 DPI for crystal clear print
+                    "module_height": 20,  # Thicker bars
+                    "module_width": 0.5,  # Precise width
                 }
+                
                 code128.render(writer_opts).save(bar_buf, format="PNG")
                 bar_buf.seek(0)
                 bar_img = Image.open(bar_buf).convert("RGBA")
 
-                # --------- PDF Canvas setup ----------
+                # --------- PDF Canvas setup (300 DPI) ----------
                 lw = float(label_width_mm) * mm
                 lh = float(label_height_mm) * mm
 
                 pdf_buffer = io.BytesIO()
+                # High resolution canvas
                 c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
 
                 def pil_to_buf(img):
@@ -88,7 +109,7 @@ if st.button("✨ Generate Label", use_container_width=True):
 
                 margin = 8 * mm
 
-                # ===== LEFT SIDE: ARROW =====
+                # ===== LEFT: ARROW =====
                 arrow_block_w = lw * 0.28
                 arrow_block_h = lh - 2 * margin
 
@@ -117,7 +138,7 @@ if st.button("✨ Generate Label", use_container_width=True):
                 c.setStrokeColor(arrow_color)
                 c.drawPath(p, stroke=0, fill=1)
 
-                # ===== RIGHT SIDE: LOGO, BARCODE, TEXT =====
+                # ===== RIGHT SIDE: CONTENT =====
                 tiny_gap = 1.5 * mm
                 right_x = arrow_x + arrow_block_w + tiny_gap
                 right_w = lw - right_x - margin
@@ -125,7 +146,7 @@ if st.button("✨ Generate Label", use_container_width=True):
                 col_top = lh - margin
                 col_bottom = margin
 
-                # ===== TOP: LOGO ONLY =====
+                # ===== TOP: LOGO =====
                 logo_area_h = (col_top - col_bottom) * (logo_height_percent / 100)
                 
                 logo_ratio = logo_img.height / logo_img.width
@@ -147,31 +168,40 @@ if st.button("✨ Generate Label", use_container_width=True):
                     width=logo_w,
                     height=logo_h,
                     mask="auto",
+                    preserveAspectRatio=True,
                 )
 
-                # ===== BOTTOM: BARCODE + TEXT =====
-                barcode_area_top = logo_y - 3 * mm
-                barcode_area_bottom = col_bottom
+                # ===== BOTTOM: BARCODE + UNDERLINE + TEXT =====
+                barcode_area_top = logo_y - 4 * mm
+                barcode_area_bottom = col_bottom + 4 * mm
                 barcode_area_h = barcode_area_top - barcode_area_bottom
 
                 center_x = right_x + right_w / 2.0
 
-                # ---- Underline (barcode ke same width) ----
+                # ---- Calculate Barcode Size (BADA) ----
                 bar_ratio = bar_img.height / bar_img.width
-                bar_w = right_w * 0.85
+                
+                # Barcode ko jitna possible ho utna bada banao
+                bar_w = right_w * 0.90 * barcode_scale  # 90% of available width
                 bar_h = bar_w * bar_ratio
 
-                if bar_h > barcode_area_h * 0.5:
-                    scale = (barcode_area_h * 0.5) / bar_h
+                # Agar bahat zyada height ho to reduce karo
+                if bar_h > barcode_area_h * 0.55:
+                    scale = (barcode_area_h * 0.55) / bar_h
                     bar_w *= scale
                     bar_h *= scale
 
-                line_y = barcode_area_top - 2 * mm
+                # ---- UNDERLINE (Barcode ke same width, colored) ----
+                line_y = barcode_area_top - 3 * mm
                 c.setStrokeColor(arrow_color)
-                c.setLineWidth(2)
-                c.line(center_x - bar_w / 2.0, line_y, center_x + bar_w / 2.0, line_y)
+                c.setLineWidth(2.5)  # Slightly thicker line
+                
+                underline_x1 = center_x - bar_w / 2.0
+                underline_x2 = center_x + bar_w / 2.0
+                
+                c.line(underline_x1, line_y, underline_x2, line_y)
 
-                # ---- Barcode (center, underline ke niche) ----
+                # ---- BARCODE (Barcode ke niche, HD Quality) ----
                 bar_x = center_x - bar_w / 2.0
                 bar_y = line_y - bar_h - 2 * mm
 
@@ -182,31 +212,41 @@ if st.button("✨ Generate Label", use_container_width=True):
                     width=bar_w,
                     height=bar_h,
                     mask="auto",
+                    preserveAspectRatio=True,
                 )
 
-                # ---- Text (barcode ke niche) ----
+                # ---- TEXT (Bold, Clear) ----
                 c.setFillColor(black)
-                c.setFont("Helvetica-Bold", 22)
-                text_y = bar_y - 6 * mm
+                c.setFont("Helvetica-Bold", 26)  # Slightly larger
+                text_y = bar_y - 7 * mm
+                
                 c.drawCentredString(center_x, text_y, barcode_text)
 
-                # ===== DONE =====
+                # ===== SAVE PDF =====
                 c.showPage()
                 c.save()
                 pdf_buffer.seek(0)
                 pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("✅ Label ready! Download karo")
+            # ===== SUCCESS MESSAGE + DOWNLOAD =====
+            st.success("✅ HD Label ready! Print quality guaranteed!")
             
-            col1, col2 = st.columns(2)
+            st.markdown("---")
+            col1, col2 = st.columns([2, 1])
+            
             with col1:
+                st.info("📌 **Print Settings:**\n- Quality: " + str(dpi) + " DPI\n- Paper: 210x80mm (MEDIUM)\n- Color: Recommended")
+            
+            with col2:
                 st.download_button(
-                    label="📥 Download PDF",
+                    label="⬇️ Download HD PDF",
                     data=pdf_bytes,
                     file_name=f"label_{barcode_text}.pdf",
                     mime="application/pdf",
+                    use_container_width=True,
+                    type="primary"
                 )
 
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
-            st.info("Logo clear aur valid ho - PNG ya JPG format mein upload karo")
+            st.warning("💡 Tip: Logo clear hona chahiye aur valid JPG/PNG format mein ho")
