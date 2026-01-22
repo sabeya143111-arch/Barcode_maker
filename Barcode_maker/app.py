@@ -58,48 +58,121 @@ def load_logo(uploaded_file=None):
         return None, None
 
 
-st.set_page_config(page_title="Warehouse Label", page_icon="🏷️")
+# ================== PAGE CONFIG ==================
+st.set_page_config(
+    page_title="Warehouse Label",
+    page_icon="🏷️",
+    layout="wide"
+)
+
 st.title("🏷️ Warehouse Label Maker (Odoo Ready)")
 
-# ===== INPUTS =====
-barcode_text = st.text_input(
-    "Location Code (jaise: W13-07-07-01-02)",
-    value="W13-07-07-01-02",
-)
+# ================== LAYOUT: SIDEBAR ==================
+with st.sidebar:
+    st.header("⚙️ Global Settings")
 
-col1, col2 = st.columns(2)
-with col1:
-    label_width_mm = st.number_input("Label width (mm)", value=210.0)
-with col2:
-    label_height_mm = st.number_input("Label height (mm)", value=60.0)
+    barcode_text = st.text_input(
+        "Location Code",
+        value="W13-07-07-01-02",
+        help="Jaise: W13-07-07-01-02"
+    )
 
-st.markdown("### 🎨 Customization")
+    label_width_mm = st.number_input(
+        "Label width (mm)",
+        min_value=20.0,
+        max_value=500.0,
+        value=210.0,
+        step=1.0
+    )
+    label_height_mm = st.number_input(
+        "Label height (mm)",
+        min_value=10.0,
+        max_value=200.0,
+        value=60.0,
+        step=1.0
+    )
 
-c1, c2, c3 = st.columns(3)
+    st.markdown("---")
+    st.subheader("🎨 Text & Band")
 
-with c1:
     text_font_size = st.slider(
-        "Text font size", min_value=16, max_value=90, value=60, step=1
+        "Text font size",
+        min_value=16,
+        max_value=90,
+        value=60,
+        step=1
     )
 
-with c2:
-    logo_scale = st.slider(
-        "Logo size (%)", min_value=20, max_value=80, value=45, step=5
-    )
-
-with c3:
     underline_gap_mm = st.slider(
-        "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=3.0, step=0.5
+        "Text–underline gap (mm)",
+        min_value=1.0,
+        max_value=10.0,
+        value=3.0,
+        step=0.5,
     )
 
-uploaded_logo = st.file_uploader(
-    "Custom logo (PNG/JPG)", type=["png", "jpg", "jpeg"]
-)
+    band_color_hex = st.color_picker(
+        "Band color",
+        value="#FF7A1A",
+        help="Orange band ka color"
+    )
 
-preview_btn = st.button("👀 Preview", use_container_width=True)
-download_btn = st.button("⬇️ Generate & Download PDF", use_container_width=True)
+    st.markdown("---")
+    st.subheader("🏢 Logo")
 
-def build_pdf(return_png_preview=False):
+    logo_scale = st.slider(
+        "Logo size (%)",
+        min_value=20,
+        max_value=80,
+        value=45,
+        step=5
+    )
+
+    uploaded_logo = st.file_uploader(
+        "Custom logo (PNG/JPG)",
+        type=["png", "jpg", "jpeg"]
+    )
+
+    st.markdown("---")
+    st.subheader("📦 Barcode options")
+
+    module_height = st.slider(
+        "Barcode height (module_height)",
+        min_value=5,
+        max_value=40,
+        value=18,
+        step=1
+    )
+
+    module_width = st.slider(
+        "Barcode thickness (module_width)",
+        min_value=0.2,
+        max_value=1.0,
+        value=0.45,
+        step=0.05
+    )
+
+    dpi_value = st.slider(
+        "Barcode DPI",
+        min_value=300,
+        max_value=1200,
+        value=600,
+        step=100
+    )
+
+    st.markdown("---")
+    preview_btn = st.button("👀 Preview PDF")
+    download_btn = st.button("⬇️ Generate & Download PDF")
+
+
+# ================== PDF BUILDER ==================
+def build_pdf(
+    return_png_preview: bool = False,
+    band_color: str = "#FF7A1A",
+    module_h: int = 18,
+    module_w: float = 0.45,
+    dpi: int = 600,
+):
     if not barcode_text.strip():
         raise ValueError("Code likho.")
 
@@ -111,9 +184,9 @@ def build_pdf(return_png_preview=False):
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
     writer_opts = {
         "write_text": False,
-        "dpi": 600,
-        "module_height": 18,
-        "module_width": 0.45,
+        "dpi": dpi,
+        "module_height": module_h,
+        "module_width": module_w,
     }
     code128.render(writer_opts).save(bbuf, format="PNG")
     bbuf.seek(0)
@@ -267,11 +340,11 @@ def build_pdf(return_png_preview=False):
         band_bottom_y,
     )
 
-    # ---- ORANGE BAND jisme text fit hoga ----
+    # ---- BAND COLOR (editable) ----
     band_margin_x = 4 * mm
     band_height = band_top_y - band_bottom_y
 
-    c.setFillColor(HexColor("#FF7A1A"))
+    c.setFillColor(HexColor(band_color))
     c.roundRect(
         right_x + band_margin_x,
         band_bottom_y,
@@ -304,37 +377,63 @@ def build_pdf(return_png_preview=False):
     c.save()
     pdf_buffer.seek(0)
 
-    if not return_png_preview:
-        return pdf_buffer.getvalue()
-
     return pdf_buffer.getvalue()
 
 
-# ===== HANDLERS =====
-if preview_btn:
-    try:
-        pdf_bytes = build_pdf(return_png_preview=False)
-        st.success("Preview (PDF) niche dikh raha hai. Zoom karke check kar.")
-        st.download_button(
-            "⬇️ Download this preview PDF",
-            data=pdf_bytes,
-            file_name=f"preview_{barcode_text}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
-    except Exception as e:
-        st.error(f"Error: {e}")
+# ================== MAIN AREA ==================
+col_preview, col_info = st.columns([3, 1])
 
-if download_btn:
-    try:
-        pdf_bytes = build_pdf(return_png_preview=False)
-        st.success("✅ Final PDF ready!")
-        st.download_button(
-            "⬇️ Download Final PDF",
-            data=pdf_bytes,
-            file_name=f"label_{barcode_text}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
-    except Exception as e:
-        st.error(f"Error: {e}")
+with col_preview:
+    st.subheader("📄 Output PDF")
+    if preview_btn:
+        try:
+            pdf_bytes = build_pdf(
+                band_color=band_color_hex,
+                module_h=module_height,
+                module_w=module_width,
+                dpi=dpi_value,
+            )
+            st.success("Preview ready. Niche se download karke dekh sakte ho.")
+            st.download_button(
+                "⬇️ Download preview PDF",
+                data=pdf_bytes,
+                file_name=f"preview_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    if download_btn:
+        try:
+            pdf_bytes = build_pdf(
+                band_color=band_color_hex,
+                module_h=module_height,
+                module_w=module_width,
+                dpi=dpi_value,
+            )
+            st.success("✅ Final PDF ready!")
+            st.download_button(
+                "⬇️ Download Final PDF",
+                data=pdf_bytes,
+                file_name=f"label_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+with col_info:
+    st.subheader("ℹ️ Current Settings")
+    st.write(f"**Code**: {barcode_text}")
+    st.write(f"Size: {label_width_mm} mm × {label_height_mm} mm")
+    st.write(f"Font size: {text_font_size} pt")
+    st.write(f"Band color: {band_color_hex}")
+    st.write(f"Logo scale: {logo_scale}%")
+    st.write(f"Barcode DPI: {dpi_value}")
+    st.write(f"Module (h × w): {module_height} × {module_width}")
+
+    st.markdown("---")
+    st.caption(
+        "Sab settings sidebar se live change karo, phir Preview / Final PDF generate karo."
+    )
