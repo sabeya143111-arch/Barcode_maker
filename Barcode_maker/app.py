@@ -22,8 +22,8 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
-# ==> LABEL KO BADA KAR DIYA (210 x 80 mm)
-label_width_mm = st.number_input("Label width (mm)", value=210.0)   # almost A4 width
+# Bada label (almost A4 width ka half)
+label_width_mm = st.number_input("Label width (mm)", value=210.0)
 label_height_mm = st.number_input("Label height (mm)", value=80.0)
 
 if st.button("Generate Label"):
@@ -34,22 +34,22 @@ if st.button("Generate Label"):
         st.error("Product code khali hai.")
     else:
         try:
-            # --------- Load images ----------
+            # --------- Logo load ----------
             logo_img = Image.open(logo_file).convert("RGBA")
 
-            # HIGH‑DPI BARCODE (600 DPI)
+            # --------- High‑DPI barcode (600 dpi, no text) ----------
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
             writer_opts = {
                 "write_text": False,
-                "dpi": 600,          # sharp print ke liye high dpi [web:31][web:44]
-                "module_height": 15, # line height mm approx
-            }
+                "dpi": 600,
+                "module_height": 15,
+            }  # [web:31][web:44]
             code128.render(writer_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
 
-            # --------- PDF Canvas ----------
+            # --------- PDF canvas ----------
             lw = float(label_width_mm) * mm
             lh = float(label_height_mm) * mm
 
@@ -66,9 +66,8 @@ if st.button("Generate Label"):
             bar_img_buf = pil_to_buf(bar_img)
 
             margin = 8 * mm
-            inner_gap = 0 * mm
 
-            # ===== LEFT: ANIMATED ARROW (BADA) =====
+            # ===== LEFT: animated style arrow =====
             arrow_block_w = lw * 0.30
             arrow_block_h = lh - 2 * margin
 
@@ -98,15 +97,16 @@ if st.button("Generate Label"):
             c.setStrokeColor(orange)
             c.drawPath(p, stroke=0, fill=1)
 
-            # ===== RIGHT COLUMN: LOGO + BARCODE + TEXT =====
-            right_x = arrow_x + arrow_block_w + 10 * mm
+            # ===== RIGHT COLUMN: logo + underline + barcode + text =====
+            # Arrow ke bahut paas start (gap ~2mm)
+            right_x = arrow_x + arrow_block_w + 2 * mm
             right_w = lw - right_x - margin
 
             col_top = lh - margin
             col_bottom = margin
             col_height = col_top - col_bottom
 
-            logo_area_h = col_height * 0.35
+            logo_area_h = col_height * 0.30
             barcode_area_h = col_height * 0.40
 
             # ---- Logo ----
@@ -129,7 +129,17 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- Barcode (bilkul neeche chipka hua) ----
+            # ---- Underline (logo ke bilkul niche) ----
+            line_margin = 2 * mm
+            line_y = logo_y - line_margin
+            line_x1 = right_x + right_w * 0.10
+            line_x2 = right_x + right_w * 0.90
+
+            c.setStrokeColor(orange)
+            c.setLineWidth(2)
+            c.line(line_x1, line_y, line_x2, line_y)
+
+            # ---- Barcode (underline ke just niche) ----
             bar_w = right_w
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
@@ -139,7 +149,7 @@ if st.button("Generate Label"):
                 bar_h *= scale
 
             bar_x = right_x + (right_w - bar_w) / 2.0
-            bar_y = logo_y - bar_h - inner_gap
+            bar_y = line_y - bar_h - 2 * mm
 
             c.drawImage(
                 ImageReader(bar_img_buf),
@@ -150,19 +160,20 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- Text (bada, bold) ----
+            # ---- Text (barcode ke niche, bada) ----
             c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 26)   # bigger text
+            c.setFont("Helvetica-Bold", 26)
             text_y = bar_y - 6 * mm
             text_x = right_x + right_w / 2.0
             c.drawCentredString(text_x, text_y, barcode_text)  # [web:24][web:26]
 
+            # ===== FINISH =====
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Bada HD label ready ✅")
+            st.success("Label ready ✅")
             st.download_button(
                 label="Download Label PDF",
                 data=pdf_bytes,
