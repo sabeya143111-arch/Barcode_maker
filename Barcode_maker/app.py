@@ -310,7 +310,7 @@ def build_pdf(
     c.setFillColor(black)
     c.drawPath(p, stroke=0, fill=1)
 
-    # ===== RIGHT: LOGO + BARCODE + TEXT =====
+    # ===== RIGHT: LOGO (GREEN) + BARCODE + TEXT =====
     right_x = left_x + left_w + 1 * mm
     right_w = lw - right_x - margin
     right_y = margin
@@ -321,53 +321,48 @@ def build_pdf(
     c.roundRect(right_x, right_y, right_w, right_h, 3 * mm)
     center_x = right_x + right_w / 2.0
 
-    # ---- LOGO (center top) ----
+    # ==== GREEN LOGO BOX BOTTOM-LEFT ====
+    green_w = right_w * 0.16
+    green_h = right_h * 0.36
+    green_x = right_x + 3 * mm
+    green_y = right_y + 3 * mm
+
+    c.setLineWidth(1)
+    c.roundRect(green_x, green_y, green_w, green_h, 3 * mm)
+
     if logo_img and logo_ir:
-        logo_area_h = right_h * 0.40
-        ratio = logo_img.height / logo_img.width
+        logo_margin = 1.5 * mm
+        logo_w = green_w - 2 * logo_margin
+        logo_h = green_h - 2 * logo_margin
 
-        logo_h = logo_area_h * (logo_scale / 100.0)
-        logo_w = logo_h / ratio
+        ratio = logo_img.width / logo_img.height
+        if logo_w / logo_h > ratio:
+            logo_w = logo_h * ratio
+        else:
+            logo_h = logo_w / ratio
 
-        max_logo_w = right_w * 0.45
-        if logo_w > max_logo_w:
-            logo_w = max_logo_w
-            logo_h = logo_w * ratio
-
-        logo_y = right_y + right_h - logo_h - 1.5 * mm
-        logo_x = center_x - logo_w / 2.0
+        lx = green_x + (green_w - logo_w) / 2.0
+        ly = green_y + (green_h - logo_h) / 2.0
 
         c.drawImage(
             logo_ir,
-            logo_x,
-            logo_y,
+            lx,
+            ly,
             width=logo_w,
             height=logo_h,
             mask="auto",
         )
 
-        top_line_y = logo_y - 2 * mm
-        c.setLineWidth(2)
-        c.line(
-            right_x + 3 * mm,
-            top_line_y,
-            right_x + right_w - 3 * mm,
-            top_line_y,
-        )
+    # ==== BARCODE AREA (TOP FULL WIDTH) ====
+    barcode_area_top = right_y + right_h - 4 * mm
+    barcode_area_bottom = right_y + right_h * 0.40
 
-        barcode_area_bottom = right_y + right_h * 0.40
-        barcode_area_top = top_line_y - 2 * mm
-    else:
-        barcode_area_bottom = right_y + right_h * 0.25
-        barcode_area_top = right_y + right_h - 4 * mm
-
-    # ---- BARCODE ----
     barcode_area_h = barcode_area_top - barcode_area_bottom
     bar_w = right_w * 0.92
-    bar_h = barcode_area_h * 0.70
+    bar_h = barcode_area_h * 0.90
 
     bar_x = center_x - bar_w / 2.0
-    bar_y = barcode_area_bottom + (barcode_area_h - bar_h)
+    bar_y = barcode_area_bottom + (barcode_area_h - bar_h) / 2.0
 
     c.drawImage(
         bar_ir,
@@ -378,22 +373,18 @@ def build_pdf(
         mask="auto",
     )
 
-    # ---- UPPER TEXT LINE ----
-    bottom_line_y = bar_y - 3.5 * mm
-    c.setLineWidth(2)
-    c.line(
-        right_x + 3 * mm,
-        bottom_line_y,
-        right_x + right_w - 3 * mm,
-        bottom_line_y,
-    )
-
-    # ==== TEXT AREA ====
+    # ==== TEXT BAND (BOTTOM) ====
     band_bottom_y = right_y + 3 * mm
-    band_top_y = bottom_line_y - underline_gap_mm * mm
+    band_top_y = barcode_area_bottom - underline_gap_mm * mm
     text_center_y = (band_top_y + band_bottom_y) / 2.0
 
     c.setLineWidth(2)
+    c.line(
+        right_x + 3 * mm,
+        band_top_y,
+        right_x + right_w - 3 * mm,
+        band_top_y,
+    )
     c.line(
         right_x + 3 * mm,
         band_bottom_y,
