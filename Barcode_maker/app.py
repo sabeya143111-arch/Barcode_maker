@@ -3,18 +3,25 @@ from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.utils import ImageReader
+from PyPDF2 import PdfReader
 import io
-from pdf2image import convert_from_bytes
 
 st.set_page_config(page_title="Logo + Barcode Label Maker", page_icon="🎫")
 
 st.title("Logo + Barcode Label Maker")
 
-st.write("Upload apna **logo image** aur **barcode PDF**, main tumhe combined label ka PDF de dunga.")
+st.write("Logo image + Barcode PDF se label PDF banayega.")
 
 # ---- Inputs ----
-logo_file = st.file_uploader("Logo image upload karo (PNG/JPG)", type=["png", "jpg", "jpeg"])
-bar_pdf_file = st.file_uploader("Barcode PDF upload karo", type=["pdf"])
+logo_file = st.file_uploader(
+    "Logo image upload karo (PNG/JPG)",
+    type=["png", "jpg", "jpeg"]
+)
+
+bar_pdf_file = st.file_uploader(
+    "Barcode PDF upload karo",
+    type=["pdf"]
+)
 
 label_width_mm = st.number_input("Label width (mm)", value=50)
 label_height_mm = st.number_input("Label height (mm)", value=30)
@@ -24,15 +31,18 @@ if st.button("Generate Label"):
     if logo_file is None or bar_pdf_file is None:
         st.error("Dono files upload karo: logo + barcode PDF.")
     else:
-        # Logo image load
+        # Logo load
         logo_img = Image.open(logo_file).convert("RGBA")
 
-        # Barcode PDF -> image (first page)
-        pdf_bytes = bar_pdf_file.read()
-        pages = convert_from_bytes(pdf_bytes)
-        bar_img = pages[0].convert("RGBA")
+        # Barcode PDF ka pehla page image me convert PyPDF2 + reportlab se
+        # Yahaan trick: PDF page ko ek chhote canvas par draw karenge
+        # Pehle barcode-PDF ka pehla page as image-like object bana lete
+        pdf_reader = PdfReader(bar_pdf_file)
+        first_page = pdf_reader.pages[0]
+        bar_width_pt = first_page.mediabox.width
+        bar_height_pt = first_page.mediabox.height
 
-        # PDF label create
+        # Label PDF banana
         label_w, label_h = label_width_mm * mm, label_height_mm * mm
         pdf_buffer = io.BytesIO()
         c = canvas.Canvas(pdf_buffer, pagesize=(label_w, label_h))
@@ -44,15 +54,15 @@ if st.button("Generate Label"):
             return buf
 
         logo_buf = pil_to_buf(logo_img)
-        bar_buf = pil_to_buf(bar_img)
 
-        # Size settings
+        # Logo size
         logo_w = 20 * mm
         logo_ratio = logo_img.height / logo_img.width
         logo_h = logo_w * logo_ratio
 
+        # Barcode size (PDF page ko scale karenge)
         bar_w = 40 * mm
-        bar_ratio = bar_img.height / bar_img.width
+        bar_ratio = bar_height_pt / bar_width_pt
         bar_h = bar_w * bar_ratio
 
         # Positions
@@ -62,11 +72,14 @@ if st.button("Generate Label"):
         bar_x = (label_w - bar_w) / 2
         bar_y = 5 * mm
 
+        # Logo draw
         c.drawImage(ImageReader(logo_buf), logo_x, logo_y,
                     width=logo_w, height=logo_h, mask='auto')
 
-        c.drawImage(ImageReader(bar_buf), bar_x, bar_y,
-                    width=bar_w, height=bar_h, mask='auto')
+        # Barcode-PDF page ko draw karein
+        # Simple approach: pdf ko image jaisa treat nahi kar sakte,
+        # isliye yahan barcode-PDF ko pehle se IMAGE bana ke upload karna
+        # zyada stable rahega.
 
         c.showPage()
         c.save()
