@@ -12,7 +12,7 @@ from barcode.writer import ImageWriter
 st.set_page_config(page_title="Logo + Barcode Label Maker", page_icon="🎫")
 
 st.title("Logo + Barcode Label Maker")
-st.write("Logo + Barcode + neat text → ekdum clean label.")
+st.write("Logo + Barcode + arrow + bold text → ekdum clean label.")
 
 # ---------- Inputs ----------
 logo_file = st.file_uploader(
@@ -43,9 +43,9 @@ if st.button("Generate Label"):
             # ----- 2) Barcode image generate (Code128, WITHOUT text) -----
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-            # text off:
-            render_options = {"write_text": False}  # [web:19][web:20][web:21]
-            code128.render(render_options).save(bar_buf, format="PNG")
+            # python-barcode me text off karne ke liye render options use karte hain [web:19][web:20]
+            render_opts = {"write_text": False}
+            code128.render(render_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
 
@@ -70,7 +70,7 @@ if st.button("Generate Label"):
             right_margin = 5 * mm
             mid_gap = 3 * mm
 
-            # Logo block
+            # Logo block (fixed area)
             logo_block_w = lw * 0.30
             logo_block_h = lh - 10 * mm
             logo_max_side = min(logo_block_w, logo_block_h)
@@ -80,7 +80,7 @@ if st.button("Generate Label"):
             logo_x = left_margin
             logo_y = (lh - logo_h) / 2.0
 
-            # Barcode area
+            # Barcode area (right side)
             bar_area_x = logo_x + logo_block_w + mid_gap
             bar_area_w = lw - bar_area_x - right_margin
 
@@ -89,16 +89,20 @@ if st.button("Generate Label"):
             bar_h = bar_w * bar_ratio
 
             text_height = 8 * mm
-            max_bar_height = lh - 12 * mm - text_height
+            arrow_height = 6 * mm
+            # top + bottom padding + arrow + text ke hisaab se max height [web:26]
+            max_bar_height = lh - (12 * mm + text_height + arrow_height)
+
             if bar_h > max_bar_height:
                 scale = max_bar_height / bar_h
                 bar_w *= scale
                 bar_h *= scale
 
+            # Barcode ko vertical center rakhte hue, upar arrow aur niche text ke liye jagah
             bar_x = bar_area_x
-            bar_y = (lh - bar_h - text_height) / 2.0 + text_height / 2.0
+            bar_y = (lh - bar_h) / 2.0
 
-            # ----- Draw logo -----
+            # ----- 4) Draw logo -----
             c.drawImage(
                 ImageReader(logo_buf),
                 logo_x,
@@ -108,7 +112,7 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ----- Draw barcode -----
+            # ----- 5) Draw barcode -----
             c.drawImage(
                 ImageReader(bar_img_buf),
                 bar_x,
@@ -118,12 +122,19 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ----- BIG single text below barcode -----
+            # ----- 6) Arrow UP (orientation mark) -----
+            c.setFillColor(black)
+            c.setFont("Helvetica-Bold", 14)
+            arrow_y = bar_y + bar_h + 2 * mm
+            arrow_x_center = bar_x + bar_w / 2.0
+            c.drawCentredString(arrow_x_center, arrow_y, "↑")  # [web:24]
+
+            # ----- 7) BIG single text below barcode -----
             c.setFillColor(black)
             c.setFont("Helvetica-Bold", 16)
-            text_y = bar_y - 4 * mm
+            text_y = bar_y - 6 * mm
             text_x_center = bar_x + bar_w / 2.0
-            c.drawCentredString(text_x_center, text_y, barcode_text)  # [web:24][web:26]
+            c.drawCentredString(text_x_center, text_y, barcode_text)
 
             # ----- Finish -----
             c.showPage()
