@@ -48,8 +48,8 @@ if st.button("Generate Label"):
             bar_img = Image.open(bar_buf).convert("RGBA")
 
             # ----- 3) Label PDF canvas -----
-            lw = float(label_width_mm) * mm
-            lh = float(label_height_mm) * mm
+            lw = float(label_width_mm) * mm   # label width in points
+            lh = float(label_height_mm) * mm  # label height in points
 
             pdf_buffer = io.BytesIO()
             c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
@@ -64,22 +64,24 @@ if st.button("Generate Label"):
             bar_img_buf = pil_to_buf(bar_img)
 
             # ----- 4) Sizes (mm) -----
-            # Logo
-            logo_w = 20.0 * mm
+            # Thoda chhota rakha hai taaki dono side‑by‑side aa jayein
+            logo_w = 12.0 * mm
             logo_ratio = logo_img.height / logo_img.width
             logo_h = logo_w * logo_ratio
 
-            # Barcode
-            bar_w = 40.0 * mm
+            bar_w = 22.0 * mm
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            # ----- 5) Positions -----
-            logo_x = (lw - logo_w) / 2.0
-            logo_y = lh - logo_h - 5.0 * mm   # top side
+            # ----- 5) Positions : SIDE BY SIDE -----
+            # Label ke left me logo, right me barcode, dono vertically center
+            margin = 2.0 * mm
 
-            bar_x = (lw - bar_w) / 2.0
-            bar_y = 5.0 * mm                  # bottom side
+            logo_x = margin
+            logo_y = (lh - logo_h) / 2.0
+
+            bar_x = lw - bar_w - margin
+            bar_y = (lh - bar_h) / 2.0
 
             # ----- 6) Draw on PDF -----
             c.drawImage(
