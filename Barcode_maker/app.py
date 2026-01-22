@@ -79,13 +79,13 @@ c1, c2, c3 = st.columns(3)
 
 with c1:
     text_font_size = st.slider(
-        "Text font size", min_value=16, max_value=72, value=42, step=1
+        "Text font size", min_value=16, max_value=90, value=60, step=1
     )
 
 with c2:
     logo_scale = st.slider(
         "Logo size (%)", min_value=20, max_value=80, value=45, step=5
-    )  # right area ke % hisaab se
+    )
 
 with c3:
     underline_gap_mm = st.slider(
@@ -191,7 +191,6 @@ def build_pdf(return_png_preview=False):
         logo_area_h = right_h * 0.40
         ratio = logo_img.height / logo_img.width
 
-        # logo_scale % ke hisaab se
         logo_h = logo_area_h * (logo_scale / 100.0)
         logo_w = logo_h / ratio
 
@@ -255,8 +254,8 @@ def build_pdf(return_png_preview=False):
     )
 
     # ==== TEXT BAND (do line ke beech) ====
-    band_bottom_y = right_y + 4 * mm
-    band_top_y = bottom_line_y - underline_gap_mm * mm  # yahan gap control
+    band_bottom_y = right_y + 3 * mm
+    band_top_y = bottom_line_y - underline_gap_mm * mm
     text_center_y = (band_top_y + band_bottom_y) / 2.0
 
     # Lower underline line
@@ -268,13 +267,27 @@ def build_pdf(return_png_preview=False):
         band_bottom_y,
     )
 
-    # ---- TEXT: size user se ----
+    # ---- ORANGE BAND jisme text fit hoga ----
+    band_margin_x = 4 * mm
+    band_height = band_top_y - band_bottom_y
+
+    c.setFillColor(HexColor("#FF7A1A"))
+    c.roundRect(
+        right_x + band_margin_x,
+        band_bottom_y,
+        right_w - 2 * band_margin_x,
+        band_height,
+        2 * mm,
+        stroke=0,
+        fill=1,
+    )
+
+    # ---- TEXT: band ke 90% height tak ----
     c.setFillColor(black)
     base_font = "Helvetica-Bold"
 
-    max_width = right_w - 6 * mm
-    band_height = band_top_y - band_bottom_y
-    max_font_from_height = abs(band_height) * 0.9
+    max_width = right_w - 2 * band_margin_x - 2 * mm
+    max_font_from_height = abs(band_height) * 0.90
 
     size = min(text_font_size, int(max_font_from_height))
     while size > 8:
@@ -283,8 +296,9 @@ def build_pdf(return_png_preview=False):
             break
         size -= 1
 
+    text_center_x = right_x + right_w / 2.0
     c.setFont(base_font, size)
-    c.drawCentredString(center_x, text_center_y, barcode_text)
+    c.drawCentredString(text_center_x, text_center_y, barcode_text)
 
     c.showPage()
     c.save()
@@ -293,9 +307,6 @@ def build_pdf(return_png_preview=False):
     if not return_png_preview:
         return pdf_buffer.getvalue()
 
-    # PDF ko preview ke liye PNG me convert karne ka simple tareeka:
-    # reportlab se directly image nahi milti, isliye yahan optional hai.
-    # Agar tu chahe to `pdf2image` ya Ghostscript use kar sakta hai server pe.
     return pdf_buffer.getvalue()
 
 
