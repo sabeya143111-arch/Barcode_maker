@@ -24,8 +24,8 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
-label_width_mm = st.number_input("Label width (mm)", value=50.0)
-label_height_mm = st.number_input("Label height (mm)", value=30.0)
+label_width_mm = st.number_input("Label width (mm)", value=80.0)
+label_height_mm = st.number_input("Label height (mm)", value=40.0)
 
 # ---------- Button ----------
 if st.button("Generate Label"):
@@ -64,24 +64,50 @@ if st.button("Generate Label"):
             bar_img_buf = pil_to_buf(bar_img)
 
             # ----- 4) Sizes (mm) -----
-            # Thoda chhota rakha hai taaki dono side‑by‑side aa jayein
-            logo_w = 12.0 * mm
+            # Logo circle thoda chhota
+            logo_w = 18.0 * mm
             logo_ratio = logo_img.height / logo_img.width
             logo_h = logo_w * logo_ratio
 
-            bar_w = 22.0 * mm
+            # Barcode bada rakha (pure right area ke liye)
+            bar_w = 50.0 * mm
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            # ----- 5) Positions : SIDE BY SIDE -----
-            # Label ke left me logo, right me barcode, dono vertically center
-            margin = 2.0 * mm
+            # Agar height zyada ho rahi ho to adjust
+            if logo_h > lh - 6 * mm:
+                scale = (lh - 6 * mm) / logo_h
+                logo_w *= scale
+                logo_h *= scale
 
-            logo_x = margin
+            if bar_h > lh - 6 * mm:
+                scale = (lh - 6 * mm) / bar_h
+                bar_w *= scale
+                bar_h *= scale
+
+            # ----- 5) Positions : EKDAM BAGAL ME -----
+            # Left me logo, usi ke turant baad barcode
+            left_margin = 5.0 * mm
+            gap = 0.5 * mm  # almost no space
+
+            logo_x = left_margin
             logo_y = (lh - logo_h) / 2.0
 
-            bar_x = lw - bar_w - margin
+            bar_x = logo_x + logo_w + gap
             bar_y = (lh - bar_h) / 2.0
+
+            # Safety: agar barcode right edge cross kare to thoda compress
+            total_needed_width = (logo_w + gap + bar_w + left_margin)
+            if total_needed_width > lw:
+                compress = (lw - left_margin) / (logo_w + gap + bar_w)
+                logo_w *= compress
+                logo_h *= compress
+                bar_w *= compress
+                bar_h *= compress
+
+                logo_y = (lh - logo_h) / 2.0
+                bar_x = logo_x + logo_w + gap
+                bar_y = (lh - bar_h) / 2.0
 
             # ----- 6) Draw on PDF -----
             c.drawImage(
