@@ -25,7 +25,6 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
-# Label ka size FIX kar diya
 label_width_mm = st.number_input("Label width (mm)", value=80.0)
 label_height_mm = st.number_input("Label height (mm)", value=40.0)
 
@@ -41,10 +40,12 @@ if st.button("Generate Label"):
             # ----- 1) Logo load -----
             logo_img = Image.open(logo_file).convert("RGBA")
 
-            # ----- 2) Barcode image generate (Code128) -----
+            # ----- 2) Barcode image generate (Code128, WITHOUT text) -----
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-            code128.write(bar_buf)
+            # text off:
+            render_options = {"write_text": False}  # [web:19][web:20][web:21]
+            code128.render(render_options).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
 
@@ -64,17 +65,14 @@ if st.button("Generate Label"):
             logo_buf = pil_to_buf(logo_img)
             bar_img_buf = pil_to_buf(bar_img)
 
-            # ---------- DESIGN LAYOUT ----------
-            # Left 1/3 = logo area, right 2/3 = barcode + text
+            # ---------- Layout ----------
             left_margin = 5 * mm
             right_margin = 5 * mm
-            mid_gap = 3 * mm  # logo aur barcode ke beech thoda sa breathing space
+            mid_gap = 3 * mm
 
-            # ---- Logo size (fixed & centered block) ----
-            logo_block_w = (lw * 0.30)        # total width ka 30% logo ke liye
-            logo_block_h = lh - 10 * mm       # thoda top/bottom margin
-
-            # Logo ko square block me center karna
+            # Logo block
+            logo_block_w = lw * 0.30
+            logo_block_h = lh - 10 * mm
             logo_max_side = min(logo_block_w, logo_block_h)
             logo_w = logo_max_side
             logo_h = logo_max_side
@@ -82,19 +80,16 @@ if st.button("Generate Label"):
             logo_x = left_margin
             logo_y = (lh - logo_h) / 2.0
 
-            # ---- Barcode area ----
+            # Barcode area
             bar_area_x = logo_x + logo_block_w + mid_gap
             bar_area_w = lw - bar_area_x - right_margin
 
-            # Barcode width/height
             bar_w = bar_area_w
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            # Barcode ko thoda upar, niche text ke liye jagah
-            text_height = 8 * mm   # text ke liye reserved height
+            text_height = 8 * mm
             max_bar_height = lh - 12 * mm - text_height
-
             if bar_h > max_bar_height:
                 scale = max_bar_height / bar_h
                 bar_w *= scale
@@ -103,7 +98,7 @@ if st.button("Generate Label"):
             bar_x = bar_area_x
             bar_y = (lh - bar_h - text_height) / 2.0 + text_height / 2.0
 
-            # ---------- 6) Draw logo ----------
+            # ----- Draw logo -----
             c.drawImage(
                 ImageReader(logo_buf),
                 logo_x,
@@ -113,7 +108,7 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---------- 7) Draw barcode ----------
+            # ----- Draw barcode -----
             c.drawImage(
                 ImageReader(bar_img_buf),
                 bar_x,
@@ -123,20 +118,14 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---------- 8) Draw BIG, CLEAN text ----------
+            # ----- BIG single text below barcode -----
             c.setFillColor(black)
-            # Font size bada rakha, center under barcode
-            font_name = "Helvetica-Bold"
-            font_size = 14  # try 16 bhi kar sakta hai
-            c.setFont(font_name, font_size)
-
-            text_y = bar_y - 4 * mm  # barcode ke just niche
-            # Center text in barcode area
+            c.setFont("Helvetica-Bold", 16)
+            text_y = bar_y - 4 * mm
             text_x_center = bar_x + bar_w / 2.0
+            c.drawCentredString(text_x_center, text_y, barcode_text)  # [web:24][web:26]
 
-            c.drawCentredString(text_x_center, text_y, barcode_text)
-
-            # ---------- 9) Finish ----------
+            # ----- Finish -----
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
