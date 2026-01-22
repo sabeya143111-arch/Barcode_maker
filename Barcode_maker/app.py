@@ -22,9 +22,9 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
-# A4 ke ek chhote label jaisa ratio
-label_width_mm = st.number_input("Label width (mm)", value=200.0)
-label_height_mm = st.number_input("Label height (mm)", value=70.0)
+# ==> LABEL KO BADA KAR DIYA (210 x 80 mm)
+label_width_mm = st.number_input("Label width (mm)", value=210.0)   # almost A4 width
+label_height_mm = st.number_input("Label height (mm)", value=80.0)
 
 if st.button("Generate Label"):
 
@@ -37,10 +37,15 @@ if st.button("Generate Label"):
             # --------- Load images ----------
             logo_img = Image.open(logo_file).convert("RGBA")
 
+            # HIGH‑DPI BARCODE (600 DPI)
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-            render_opts = {"write_text": False}
-            code128.render(render_opts).save(bar_buf, format="PNG")
+            writer_opts = {
+                "write_text": False,
+                "dpi": 600,          # sharp print ke liye high dpi [web:31][web:44]
+                "module_height": 15, # line height mm approx
+            }
+            code128.render(writer_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
 
@@ -60,10 +65,10 @@ if st.button("Generate Label"):
             logo_buf = pil_to_buf(logo_img)
             bar_img_buf = pil_to_buf(bar_img)
 
-            margin = 6 * mm
-            inner_gap = 4 * mm
+            margin = 8 * mm
+            inner_gap = 0 * mm
 
-            # ===== LEFT: ARROW BLOCK =====
+            # ===== LEFT: ANIMATED ARROW (BADA) =====
             arrow_block_w = lw * 0.30
             arrow_block_h = lh - 2 * margin
 
@@ -71,39 +76,40 @@ if st.button("Generate Label"):
             arrow_y = (lh - arrow_block_h) / 2.0
 
             mid_x = arrow_x + arrow_block_w / 2.0
-            head_height = arrow_block_h * 0.45
-            shaft_width = arrow_block_w * 0.40
+            head_height = arrow_block_h * 0.5
+            shaft_width_top = arrow_block_w * 0.28
+            shaft_width_bottom = arrow_block_w * 0.40
+            base_h = arrow_block_h * 0.18
 
             p = c.beginPath()
-            p.moveTo(mid_x - shaft_width / 2, arrow_y)
-            p.lineTo(mid_x + shaft_width / 2, arrow_y)
-            p.lineTo(mid_x + shaft_width / 2, arrow_y + arrow_block_h - head_height)
+            p.moveTo(mid_x - shaft_width_bottom / 2, arrow_y)
+            p.lineTo(mid_x + shaft_width_bottom / 2, arrow_y)
+            p.lineTo(mid_x + shaft_width_top / 2, arrow_y + base_h)
+            p.lineTo(mid_x + shaft_width_top / 2, arrow_y + arrow_block_h - head_height)
             p.lineTo(arrow_x + arrow_block_w, arrow_y + arrow_block_h - head_height)
             p.lineTo(mid_x, arrow_y + arrow_block_h)
             p.lineTo(arrow_x, arrow_y + arrow_block_h - head_height)
-            p.lineTo(mid_x - shaft_width / 2, arrow_y + arrow_block_h - head_height)
+            p.lineTo(mid_x - shaft_width_top / 2, arrow_y + arrow_block_h - head_height)
+            p.lineTo(mid_x - shaft_width_top / 2, arrow_y + base_h)
             p.close()
 
             orange = Color(1, 0.55, 0.20)
             c.setFillColor(orange)
             c.setStrokeColor(orange)
-            c.drawPath(p, stroke=1, fill=1)
+            c.drawPath(p, stroke=0, fill=1)
 
-            # ===== RIGHT: LOGO + BARCODE + TEXT ONE COLUMN =====
-            right_x = arrow_x + arrow_block_w + inner_gap
+            # ===== RIGHT COLUMN: LOGO + BARCODE + TEXT =====
+            right_x = arrow_x + arrow_block_w + 10 * mm
             right_w = lw - right_x - margin
 
-            # Column total height minus top/bottom margin
             col_top = lh - margin
             col_bottom = margin
             col_height = col_top - col_bottom
 
-            # 3 parts: Logo (35%), Barcode (40%), Text area (25%)
             logo_area_h = col_height * 0.35
             barcode_area_h = col_height * 0.40
-            text_area_h = col_height * 0.25
 
-            # ---- 1) Logo (top area, center, no extra gap) ----
+            # ---- Logo ----
             logo_ratio = logo_img.height / logo_img.width
             logo_h = logo_area_h
             logo_w = logo_h / logo_ratio
@@ -123,7 +129,7 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- 2) Barcode (logo ke just niche, full width) ----
+            # ---- Barcode (bilkul neeche chipka hua) ----
             bar_w = right_w
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
@@ -144,20 +150,19 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- 3) Text (barcode ke just niche, center, no extra gap) ----
+            # ---- Text (bada, bold) ----
             c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 22)
-            text_y = bar_y - inner_gap - 4 * mm
+            c.setFont("Helvetica-Bold", 26)   # bigger text
+            text_y = bar_y - 6 * mm
             text_x = right_x + right_w / 2.0
-            c.drawCentredString(text_x, text_y, barcode_text)
+            c.drawCentredString(text_x, text_y, barcode_text)  # [web:24][web:26]
 
-            # ===== DONE =====
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Perfect label ready ✅")
+            st.success("Bada HD label ready ✅")
             st.download_button(
                 label="Download Label PDF",
                 data=pdf_bytes,
