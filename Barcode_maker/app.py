@@ -11,25 +11,16 @@ from barcode.writer import ImageWriter
 from urllib.request import urlopen
 
 # ===== PATH / LOGO SETTINGS =====
-# Repo structure:
-#  - Barcode_maker/
-#      - Barcode_maker/app.py  (ye file)
-#      - assets/logo.png       (ye wala logo)
-BASE_DIR = Path(__file__).resolve().parent.parent  # upar wale folder tak
+BASE_DIR = Path(__file__).resolve().parent.parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
 
-# GitHub raw URL (aapke repo ka seedha link)
 GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
 )
 
 def load_logo():
-    """
-    1) assets/logo.png locally try karega.
-    2) Agar nahi mila to GitHub se download karega.
-    3) Agar dono fail hue to None return karega.
-    """
+    """Logo load karega - local ya GitHub se"""
     # 1) Local assets/logo.png
     if LOCAL_LOGO_PATH.exists():
         try:
@@ -53,7 +44,7 @@ def load_logo():
         buf2.seek(0)
         return img, ImageReader(buf2)
     except Exception as e:
-        st.warning(f"Logo load nahi hua (local + GitHub dono fail): {e}")
+        st.warning(f"Logo load nahi hua: {e}")
         return None, None
 
 
@@ -161,16 +152,17 @@ if st.button("Generate Label", use_container_width=True):
 
             # ---- TOP: LOGO (agar available ho) ----
             if logo_img and logo_ir:
-                logo_area_h = right_h * 0.25
+                # Logo ko BADA kar diya - 30% tak
+                logo_area_h = right_h * 0.30  # Changed from 0.25 to 0.30
                 ratio = logo_img.height / logo_img.width
                 logo_h = logo_area_h
                 logo_w = logo_h / ratio
-                max_logo_w = right_w * 0.28
+                max_logo_w = right_w * 0.35  # Changed from 0.28 to 0.35
                 if logo_w > max_logo_w:
                     logo_w = max_logo_w
                     logo_h = logo_w * ratio
 
-                logo_y = right_y + right_h - logo_h - 4 * mm
+                logo_y = right_y + right_h - logo_h - 2 * mm  # Changed from 4mm to 2mm
                 logo_x = center_x - logo_w / 2.0
 
                 c.drawImage(
@@ -192,18 +184,18 @@ if st.button("Generate Label", use_container_width=True):
                     top_line_y,
                 )
 
-                barcode_area_bottom = right_y + right_h * 0.40
+                barcode_area_bottom = right_y + right_h * 0.35  # Changed from 0.40 to 0.35
                 barcode_area_top = top_line_y - 2 * mm
             else:
                 # Logo nahi hai toh barcode thoda upar shift
-                barcode_area_bottom = right_y + right_h * 0.25
-                barcode_area_top = right_y + right_h - 4 * mm
+                barcode_area_bottom = right_y + right_h * 0.15
+                barcode_area_top = right_y + right_h - 2 * mm
 
-            # ---- BARCODE ----
+            # ---- BARCODE (BADA KAR DIYA) ----
             barcode_area_h = barcode_area_top - barcode_area_bottom
 
-            bar_w = right_w * 0.86
-            bar_h = barcode_area_h * 0.70
+            bar_w = right_w * 0.90  # Changed from 0.86 to 0.90
+            bar_h = barcode_area_h * 0.80  # Changed from 0.70 to 0.80
 
             bar_x = center_x - bar_w / 2.0
             bar_y = barcode_area_bottom + (barcode_area_h - bar_h)
@@ -227,13 +219,13 @@ if st.button("Generate Label", use_container_width=True):
                 bottom_line_y,
             )
 
-            # ---- TEXT ----
+            # ---- TEXT (FONT BADA KAR DIYA) ----
             text_area_bottom = right_y + 5 * mm
             text_area_top = bottom_line_y - 2 * mm
             text_center_y = (text_area_bottom + text_area_top) / 2.0
 
             c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 26)
+            c.setFont("Helvetica-Bold", 32)  # Changed from 26 to 32 (BADA)
             c.drawCentredString(center_x, text_center_y, barcode_text)
 
             # ===== SAVE =====
@@ -242,7 +234,7 @@ if st.button("Generate Label", use_container_width=True):
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("✅ Label ready! Logo path fix ho gaya.")
+            st.success("✅ Label ready! Logo + Barcode + Font sab bada kar diya.")
             st.download_button(
                 "⬇️ Download PDF",
                 data=pdf_bytes,
