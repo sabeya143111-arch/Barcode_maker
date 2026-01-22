@@ -9,6 +9,7 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 from urllib.request import urlopen
+import hydralit_components as hc  # animation loader
 
 # ===== PATH / LOGO SETTINGS =====
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -18,6 +19,7 @@ GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
 )
+
 
 def load_logo(uploaded_file=None):
     """Logo load karega - pehle uploaded, phir local, phir GitHub se."""
@@ -58,58 +60,181 @@ def load_logo(uploaded_file=None):
         return None, None
 
 
-st.set_page_config(page_title="Warehouse Label", page_icon="🏷️", layout="wide")
-st.title("🏷️ Warehouse Label Maker (Odoo Ready)")
+# ===== PAGE CONFIG + GLOBAL CSS =====
+st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
+
+st.markdown(
+    """
+    <style>
+    /* Global background */
+    .stApp {
+        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
+    }
+
+    /* Hide default title spacing */
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+        max-width: 1200px;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: radial-gradient(circle at top, #111827 0, #020617 55%);
+        border-right: 1px solid rgba(148,163,184,0.35);
+    }
+
+    .glass-card {
+        background: rgba(15,23,42,0.85);
+        border-radius: 14px;
+        padding: 14px 14px 6px 14px;
+        border: 1px solid rgba(148,163,184,0.35);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        backdrop-filter: blur(18px);
+    }
+
+    .section-title {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #9CA3AF;
+        margin: 4px 0 6px 0;
+    }
+
+    .hero-title {
+        font-size: 40px;
+        font-weight: 800;
+        background: linear-gradient(90deg,#FF6B35,#FACC15);
+        -webkit-background-clip: text;
+        color: transparent;
+        margin-bottom: 4px;
+    }
+
+    .hero-sub {
+        font-size: 14px;
+        color: #9CA3AF;
+    }
+
+    .preview-card {
+        background: radial-gradient(circle at top left,#0F172A 0,#020617 55%);
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid rgba(148,163,184,0.35);
+        box-shadow: 0 22px 45px rgba(0,0,0,0.55);
+    }
+
+    .preview-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #E5E7EB;
+        margin-bottom: 6px;
+    }
+
+    .preview-sub {
+        font-size: 13px;
+        color: #9CA3AF;
+        margin-bottom: 10px;
+    }
+
+    .settings-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #E5E7EB;
+        margin-bottom: 6px;
+    }
+
+    .settings-sub {
+        font-size: 12px;
+        color: #9CA3AF;
+        margin-bottom: 12px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ===== HERO HEADER =====
+with st.container():
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown('<div class="hero-title">Swag Logo Maker</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="hero-sub">'
+            'Premium warehouse labels • Odoo‑ready • High‑resolution PDFs'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    with col_h2:
+        st.markdown(
+            """
+            <div style="text-align:right; margin-top:4px;">
+                <span style="font-size:12px; color:#9CA3AF;">
+                    Powered by Streamlit • ReportLab • python-barcode
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+st.markdown("")  # small space
 
 # ===== SIDEBAR INPUTS =====
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="settings-title">Control panel</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="settings-sub">Tune your label layout, logo and barcode exactly the way warehouse needs.</div>',
+        unsafe_allow_html=True,
+    )
 
+    st.markdown('<div class="section-title">Location code</div>', unsafe_allow_html=True)
     barcode_text = st.text_input(
-        "Location Code (jaise: W13-07-07-01-02)",
+        "Location Code (e.g. W13-07-07-01-02)",
         value="W13-07-07-01-02",
     )
 
-    label_width_mm = st.number_input("Label width (mm)", value=210.0, min_value=20.0)
-    label_height_mm = st.number_input("Label height (mm)", value=60.0, min_value=20.0)
+    st.markdown('<div class="section-title">Label size</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        label_width_mm = st.number_input("Width (mm)", value=210.0, min_value=20.0)
+    with c2:
+        label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0)
 
-    st.markdown("### 🎨 Text")
-
+    st.markdown('<div class="section-title">Text</div>', unsafe_allow_html=True)
     text_font_size = st.slider(
-        "Text font size", min_value=16, max_value=90, value=60, step=1
+        "Font size", min_value=16, max_value=90, value=60, step=1
     )
-
     underline_gap_mm = st.slider(
         "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=3.0, step=0.5
     )
 
-    st.markdown("### 🏢 Logo")
+    st.markdown('<div class="section-title">Logo</div>', unsafe_allow_html=True)
     logo_scale = st.slider(
         "Logo size (%)", min_value=20, max_value=80, value=45, step=5
     )
-
     uploaded_logo = st.file_uploader(
         "Custom logo (PNG/JPG)", type=["png", "jpg", "jpeg"]
     )
 
-    st.markdown("### 📦 Barcode")
+    st.markdown('<div class="section-title">Barcode</div>', unsafe_allow_html=True)
     module_height = st.slider(
-        "Barcode height (module_height)", min_value=5, max_value=40, value=18, step=1
+        "Height", min_value=5, max_value=40, value=18, step=1
     )
     module_width = st.slider(
-        "Barcode thickness (module_width)",
+        "Thickness",
         min_value=0.2,
         max_value=1.0,
         value=0.45,
         step=0.05,
     )
     dpi_value = st.slider(
-        "Barcode DPI", min_value=300, max_value=1200, value=600, step=100
+        "DPI", min_value=300, max_value=1200, value=600, step=100
     )
 
     st.markdown("---")
-    preview_btn = st.button("👀 Preview PDF")
-    download_btn = st.button("⬇️ Generate & Download PDF")
+    preview_btn = st.button("👀 Live preview")
+    download_btn = st.button("⬇️ Download PDF", type="primary")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def build_pdf(
@@ -270,7 +395,7 @@ def build_pdf(
         bottom_line_y,
     )
 
-    # ==== TEXT AREA (ab koi orange band nahi) ====
+    # ==== TEXT AREA ====
     band_bottom_y = right_y + 3 * mm
     band_top_y = bottom_line_y - underline_gap_mm * mm
     text_center_y = (band_top_y + band_bottom_y) / 2.0
@@ -315,14 +440,25 @@ def build_pdf(
 col_preview, col_info = st.columns([3, 1])
 
 with col_preview:
-    st.subheader("📄 Output PDF")
+    st.markdown(
+        """
+        <div class="preview-card">
+            <div class="preview-title">Live label preview</div>
+            <div class="preview-sub">
+                Adjust settings on the left and export a print‑ready PDF in one click.
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if preview_btn:
         try:
-            pdf_bytes = build_pdf(
-                module_h=module_height,
-                module_w=module_width,
-                dpi=dpi_value,
-            )
+            with hc.HyLoader("Rendering premium label...", hc.Loaders.pulse_bars):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
             st.success("Preview ready.")
             st.download_button(
                 "⬇️ Download preview PDF",
@@ -336,11 +472,12 @@ with col_preview:
 
     if download_btn:
         try:
-            pdf_bytes = build_pdf(
-                module_h=module_height,
-                module_w=module_width,
-                dpi=dpi_value,
-            )
+            with hc.HyLoader("Exporting high‑resolution PDF...", hc.Loaders.pulse_bars):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
             st.success("✅ Final PDF ready!")
             st.download_button(
                 "⬇️ Download Final PDF",
@@ -352,11 +489,20 @@ with col_preview:
         except Exception as e:
             st.error(f"Error: {e}")
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
 with col_info:
-    st.subheader("ℹ️ Current Settings")
-    st.write(f"Code: {barcode_text}")
-    st.write(f"Size: {label_width_mm} mm × {label_height_mm} mm")
-    st.write(f"Font size: {text_font_size} pt")
-    st.write(f"Logo scale: {logo_scale}%")
-    st.write(f"Barcode DPI: {dpi_value}")
-    st.write(f"Module (h × w): {module_height} × {module_width}")
+    st.markdown(
+        """
+        <div class="preview-card" style="padding:14px 14px;">
+            <div class="preview-title" style="font-size:16px;">Current settings</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.write(f"Code: **{barcode_text}**")
+    st.write(f"Size: **{label_width_mm} mm × {label_height_mm} mm**")
+    st.write(f"Font size: **{text_font_size} pt**")
+    st.write(f"Logo scale: **{logo_scale}%**")
+    st.write(f"Barcode DPI: **{dpi_value}**")
+    st.write(f"Module (h × w): **{module_height} × {module_width}**")
+    st.markdown("</div>", unsafe_allow_html=True)
