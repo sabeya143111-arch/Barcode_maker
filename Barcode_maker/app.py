@@ -71,48 +71,33 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
             left_x = margin
             left_y = margin
 
-            # outer rounded rectangle
             c.setLineWidth(1.5)
             radius = 3 * mm
             c.roundRect(left_x, left_y, left_w, left_h, radius)
 
-            # gradient‑like effect (2 shades)
             main_col = HexColor("#111111")
             light_col = HexColor("#444444")
 
-            # shadow background
             c.setFillColor(light_col)
-            c.roundRect(left_x + 0.8*mm, left_y + 0.8*mm, left_w - 1.6*mm, left_h - 1.6*mm, radius, stroke=0, fill=1)
+            c.roundRect(left_x + 0.8*mm, left_y + 0.8*mm,
+                        left_w - 1.6*mm, left_h - 1.6*mm, radius,
+                        stroke=0, fill=1)
 
-            # arrow path (slightly curved, premium)
             mid_x = left_x + left_w / 2.0
             top_y = left_y + left_h - 1.5*mm
             bottom_y = left_y + 1.5*mm
 
             head_h = left_h * 0.46
             shaft_w = left_w * 0.32
-            base_h = left_h * 0.24
 
             path = c.beginPath()
-            # bottom curve
             path.moveTo(mid_x - shaft_w/2, bottom_y)
             path.lineTo(mid_x + shaft_w/2, bottom_y)
-            # shaft
             path.lineTo(mid_x + shaft_w/2, bottom_y + (left_h - head_h) * 0.97)
-            # right wing
-            path.curveTo(
-                left_x + left_w * 0.97, bottom_y + left_h - head_h * 0.95,
-                left_x + left_w * 0.97, bottom_y + left_h - head_h * 0.65,
-                left_x + left_w * 0.90, bottom_y + left_h - head_h
-            )
+            path.lineTo(left_x + left_w * 0.95, bottom_y + left_h - head_h)
             path.lineTo(mid_x, top_y)
-            # left wing
-            path.lineTo(left_x + left_w * 0.10, bottom_y + left_h - head_h)
-            path.curveTo(
-                left_x + left_w * 0.03, bottom_y + left_h - head_h * 0.65,
-                left_x + left_w * 0.03, bottom_y + left_h - head_h * 0.95,
-                mid_x - shaft_w/2, bottom_y + (left_h - head_h) * 0.97
-            )
+            path.lineTo(left_x + left_w * 0.05, bottom_y + left_h - head_h)
+            path.lineTo(mid_x - shaft_w/2, bottom_y + (left_h - head_h) * 0.97)
             path.close()
 
             c.setFillColor(main_col)
@@ -124,23 +109,22 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
             right_y = margin
             right_h = lh - 2 * margin
 
-            # outer rounded rectangle
             c.setLineWidth(1.5)
             c.roundRect(right_x, right_y, right_w, right_h, 3*mm)
 
             center_x = right_x + right_w / 2.0
 
             # ---- TOP: LOGO ----
-            logo_area_h = right_h * 0.30
+            logo_area_h = right_h * 0.25
             ratio = logo_img.height / logo_img.width
             logo_h = logo_area_h
             logo_w = logo_h / ratio
-            max_logo_w = right_w * 0.35
+            max_logo_w = right_w * 0.28
             if logo_w > max_logo_w:
                 logo_w = max_logo_w
                 logo_h = logo_w * ratio
 
-            logo_y = right_y + right_h - logo_h - 3*mm
+            logo_y = right_y + right_h - logo_h - 4*mm
             logo_x = center_x - logo_w / 2.0
 
             c.drawImage(
@@ -154,17 +138,17 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
 
             # ---- TOP UNDERLINE ----
             top_line_y = logo_y - 3*mm
-            c.setLineWidth(1.8)
+            c.setLineWidth(2)
             c.setStrokeColor(HexColor("#333333"))
             c.line(right_x + 4*mm, top_line_y, right_x + right_w - 4*mm, top_line_y)
 
             # ---- BARCODE ----
-            barcode_area_bottom = right_y + right_h * 0.34
+            barcode_area_bottom = right_y + right_h * 0.40
             barcode_area_top = top_line_y - 2*mm
             barcode_area_h = barcode_area_top - barcode_area_bottom
 
             bar_w = right_w * 0.86
-            bar_h = barcode_area_h * 0.75
+            bar_h = barcode_area_h * 0.70
 
             bar_x = center_x - bar_w / 2.0
             bar_y = barcode_area_bottom + (barcode_area_h - bar_h)
@@ -180,24 +164,17 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
 
             # ---- BOTTOM UNDERLINE ----
             bottom_line_y = bar_y - 3*mm
-            c.setLineWidth(1.8)
+            c.setLineWidth(2)
             c.line(right_x + 4*mm, bottom_line_y, right_x + right_w - 4*mm, bottom_line_y)
 
-            # ---- PREMIUM TEXT ----
-            text_area_bottom = right_y + 4*mm
-            text_area_top = bottom_line_y - 1*mm
+            # ---- TEXT (CLEAR, SEPARATE BOX) ----
+            text_area_bottom = right_y + 5*mm
+            text_area_top = bottom_line_y - 2*mm
             text_center_y = (text_area_bottom + text_area_top) / 2.0
 
-            # thoda premium look: dark gray, thoda tracking
             c.setFillColor(HexColor("#111111"))
-            c.setFont("Helvetica-Bold", 28)
-
-            # manual tracking (letter spacing) for premium feel
-            tracking = 0.6  # space between chars
-            x = center_x - (len(barcode_text) / 2.0) * (14 * tracking)
-            for ch in barcode_text:
-                c.drawString(x, text_center_y, ch)
-                x += 14 * tracking
+            c.setFont("Helvetica-Bold", 26)
+            c.drawCentredString(center_x, text_center_y, barcode_text)
 
             # ===== SAVE =====
             c.showPage()
@@ -205,7 +182,7 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("✅ Premium label ready!")
+            st.success("✅ Text ab clear visible hoga!")
             st.download_button(
                 "⬇️ Download PDF",
                 data=pdf_bytes,
@@ -216,4 +193,3 @@ if st.button("✨ Generate Premium Label", use_container_width=True, type="prima
 
         except Exception as e:
             st.error(f"Error: {e}")
-
