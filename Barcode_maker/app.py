@@ -393,4 +393,101 @@ def build_pdf(
             mask="auto",
         )
 
-    # ---- TEXT (LOGO KE R
+    # ---- TEXT (LOGO KE RIGHT) ----
+    c.setFillColor(black)
+    base_font = "Helvetica-Bold"
+
+    band_margin_x = 4 * mm
+    text_left_x = green_x + green_w + 3 * mm
+    text_right_x = right_x + right_w - band_margin_x
+    max_width = text_right_x - text_left_x
+
+    max_font_from_height = band_height * 0.80
+    size = min(text_font_size, int(max_font_from_height))
+    while size > 8:
+        w = c.stringWidth(barcode_text, base_font, size)
+        if w <= max_width:
+            break
+        size -= 1
+
+    c.setFont(base_font, size)
+    text_center_x = text_left_x + max_width / 2.0
+    c.drawCentredString(text_center_x, text_center_y, barcode_text)
+
+    c.showPage()
+    c.save()
+    pdf_buffer.seek(0)
+
+    return pdf_buffer.getvalue()
+
+
+# ===== MAIN AREA =====
+col_preview, col_info = st.columns([3, 1])
+
+with col_preview:
+    st.markdown(
+        """
+        <div class="preview-card">
+            <div class="preview-title">Live label preview</div>
+            <div class="preview-sub">
+                Adjust settings on the left and export a print‑ready PDF in one click.
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if preview_btn:
+        try:
+            with st.spinner("Rendering premium label..."):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
+            st.success("Preview ready.")
+            st.download_button(
+                "⬇️ Download preview PDF",
+                data=pdf_bytes,
+                file_name=f"preview_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    if download_btn:
+        try:
+            with st.spinner("Exporting high‑resolution PDF..."):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
+            st.success("✅ Final PDF ready!")
+            st.download_button(
+                "⬇️ Download Final PDF",
+                data=pdf_bytes,
+                file_name=f"label_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with col_info:
+    st.markdown(
+        """
+        <div class="preview-card" style="padding:14px 14px;">
+            <div class="preview-title" style="font-size:16px;">Current settings</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.write(f"Code: **{barcode_text}**")
+    st.write(f"Size: **{label_width_mm} mm × {label_height_mm} mm**")
+    st.write(f"Font size: **{text_font_size} pt**")
+    st.write(f"Logo scale: **{logo_scale}%**")
+    st.write(f"Barcode DPI: **{dpi_value}**")
+    st.write(f"Module (h × w): **{module_height} × {module_width}**")
+    st.markdown("</div>", unsafe_allow_html=True)
