@@ -65,7 +65,6 @@ st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wi
 st.markdown(
     """
     <style>
-    /* Global background */
     .stApp {
         background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
     }
@@ -76,7 +75,6 @@ st.markdown(
         max-width: 1200px;
     }
 
-    /* Sidebar styling */
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at top, #111827 0, #020617 55%);
         border-right: 1px solid rgba(148,163,184,0.35);
@@ -277,11 +275,9 @@ def build_pdf(
     c.setLineWidth(1.2)
     radius = 2.5 * mm
 
-    # Outer border
     c.setStrokeColor(black)
     c.roundRect(left_x, left_y, left_w, left_h, radius)
 
-    # Light grey background
     bg_grey = HexColor("#DDDDDD")
     c.setFillColor(bg_grey)
     c.roundRect(
@@ -294,7 +290,6 @@ def build_pdf(
         fill=1,
     )
 
-    # Solid black arrow
     mid_x = left_x + left_w / 2.0
     top_y = left_y + left_h - 2.0 * mm
     bottom_y = left_y + 2.0 * mm
@@ -375,4 +370,130 @@ def build_pdf(
     bar_y = barcode_area_bottom + (barcode_area_h - bar_h)
 
     c.drawImage(
-        bar
+        bar_ir,
+        bar_x,
+        bar_y,
+        width=bar_w,
+        height=bar_h,
+        mask="auto",
+    )
+
+    # ---- UPPER TEXT LINE ----
+    bottom_line_y = bar_y - 3.5 * mm
+    c.setLineWidth(2)
+    c.line(
+        right_x + 3 * mm,
+        bottom_line_y,
+        right_x + right_w - 3 * mm,
+        bottom_line_y,
+    )
+
+    # ==== TEXT AREA ====
+    band_bottom_y = right_y + 3 * mm
+    band_top_y = bottom_line_y - underline_gap_mm * mm
+    text_center_y = (band_top_y + band_bottom_y) / 2.0
+
+    c.setLineWidth(2)
+    c.line(
+        right_x + 3 * mm,
+        band_bottom_y,
+        right_x + right_w - 3 * mm,
+        band_bottom_y,
+    )
+
+    c.setFillColor(black)
+    base_font = "Helvetica-Bold"
+
+    band_margin_x = 4 * mm
+    band_height = band_top_y - band_bottom_y
+    max_width = right_w - 2 * band_margin_x - 2 * mm
+    max_font_from_height = abs(band_height) * 0.90
+
+    size = min(text_font_size, int(max_font_from_height))
+    while size > 8:
+        w = c.stringWidth(barcode_text, base_font, size)
+        if w <= max_width:
+            break
+        size -= 1
+
+    text_center_x = right_x + right_w / 2.0
+    c.setFont(base_font, size)
+    c.drawCentredString(text_center_x, text_center_y, barcode_text)
+
+    c.showPage()
+    c.save()
+    pdf_buffer.seek(0)
+
+    return pdf_buffer.getvalue()
+
+
+# ===== MAIN AREA =====
+col_preview, col_info = st.columns([3, 1])
+
+with col_preview:
+    st.markdown(
+        """
+        <div class="preview-card">
+            <div class="preview-title">Live label preview</div>
+            <div class="preview-sub">
+                Adjust settings on the left and export a print‑ready PDF in one click.
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if preview_btn:
+        try:
+            with st.spinner("Rendering premium label..."):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
+            st.success("Preview ready.")
+            st.download_button(
+                "⬇️ Download preview PDF",
+                data=pdf_bytes,
+                file_name=f"preview_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    if download_btn:
+        try:
+            with st.spinner("Exporting high‑resolution PDF..."):
+                pdf_bytes = build_pdf(
+                    module_h=module_height,
+                    module_w=module_width,
+                    dpi=dpi_value,
+                )
+            st.success("✅ Final PDF ready!")
+            st.download_button(
+                "⬇️ Download Final PDF",
+                data=pdf_bytes,
+                file_name=f"label_{barcode_text}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with col_info:
+    st.markdown(
+        """
+        <div class="preview-card" style="padding:14px 14px;">
+            <div class="preview-title" style="font-size:16px;">Current settings</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.write(f"Code: **{barcode_text}**")
+    st.write(f"Size: **{label_width_mm} mm × {label_height_mm} mm**")
+    st.write(f"Font size: **{text_font_size} pt**")
+    st.write(f"Logo scale: **{logo_scale}%**")
+    st.write(f"Barcode DPI: **{dpi_value}**")
+    st.write(f"Module (h × w): **{module_height} × {module_width}**")
+    st.markdown("</div>", unsafe_allow_html=True)
