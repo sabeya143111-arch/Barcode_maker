@@ -11,10 +11,6 @@ from barcode.writer import ImageWriter
 from urllib.request import urlopen
 
 # ===== PATH / LOGO SETTINGS =====
-# Repo:
-#  - Barcode_maker/
-#      - Barcode_maker/app.py
-#      - assets/logo.png
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
 
@@ -23,10 +19,8 @@ GITHUB_LOGO_URL = (
     "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
 )
 
-
 def load_logo():
     """Logo load karega - local ya GitHub se."""
-    # 1) Local assets/logo.png
     if LOCAL_LOGO_PATH.exists():
         try:
             img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -37,7 +31,6 @@ def load_logo():
         except Exception as e:
             st.warning(f"Local logo error: {e}")
 
-    # 2) GitHub raw se
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -56,7 +49,6 @@ def load_logo():
 st.set_page_config(page_title="Warehouse Label", page_icon="🏷️")
 st.title("🏷️ Warehouse Label Maker (Odoo Ready)")
 
-# ===== INPUTS =====
 barcode_text = st.text_input(
     "Location Code (jaise: W13-07-07-01-02)",
     value="W13-07-07-01-02",
@@ -101,20 +93,22 @@ if st.button("Generate Label", use_container_width=True):
 
             margin = 3 * mm
 
-            # ===== LEFT: ARROW BOX =====
+            # ===== LEFT: ARROW BOX (PRINT FRIENDLY) =====
             left_w = lw * 0.26
             left_h = lh - 2 * margin
             left_x = margin
             left_y = margin
 
-            c.setLineWidth(1.5)
-            radius = 3 * mm
+            c.setLineWidth(1.2)
+            radius = 2.5 * mm
+
+            # Outer border
+            c.setStrokeColor(black)
             c.roundRect(left_x, left_y, left_w, left_h, radius)
 
-            main_col = HexColor("#111111")
-            light_col = HexColor("#444444")
-
-            c.setFillColor(light_col)
+            # Light grey background for contrast in B&W
+            bg_grey = HexColor("#DDDDDD")
+            c.setFillColor(bg_grey)
             c.roundRect(
                 left_x + 0.8 * mm,
                 left_y + 0.8 * mm,
@@ -125,24 +119,25 @@ if st.button("Generate Label", use_container_width=True):
                 fill=1,
             )
 
+            # Solid black arrow (high contrast)
             mid_x = left_x + left_w / 2.0
-            top_y = left_y + left_h - 1.5 * mm
-            bottom_y = left_y + 1.5 * mm
+            top_y = left_y + left_h - 2.0 * mm
+            bottom_y = left_y + 2.0 * mm
 
-            head_h = left_h * 0.46
-            shaft_w = left_w * 0.32
+            head_h = left_h * 0.50
+            shaft_w = left_w * 0.38
 
             p = c.beginPath()
             p.moveTo(mid_x - shaft_w / 2, bottom_y)
             p.lineTo(mid_x + shaft_w / 2, bottom_y)
-            p.lineTo(mid_x + shaft_w / 2, bottom_y + (left_h - head_h) * 0.97)
+            p.lineTo(mid_x + shaft_w / 2, bottom_y + (left_h - head_h))
             p.lineTo(left_x + left_w * 0.95, bottom_y + left_h - head_h)
             p.lineTo(mid_x, top_y)
             p.lineTo(left_x + left_w * 0.05, bottom_y + left_h - head_h)
-            p.lineTo(mid_x - shaft_w / 2, bottom_y + (left_h - head_h) * 0.97)
+            p.lineTo(mid_x - shaft_w / 2, bottom_y + (left_h - head_h))
             p.close()
 
-            c.setFillColor(main_col)
+            c.setFillColor(black)
             c.drawPath(p, stroke=0, fill=1)
 
             # ===== RIGHT: LOGO + BARCODE + TEXT =====
@@ -151,17 +146,18 @@ if st.button("Generate Label", use_container_width=True):
             right_y = margin
             right_h = lh - 2 * margin
 
-            c.setLineWidth(1.5)
+            c.setLineWidth(1.2)
+            c.setStrokeColor(black)
             c.roundRect(right_x, right_y, right_w, right_h, 3 * mm)
             center_x = right_x + right_w / 2.0
 
-            # ---- LOGO (extra bada) ----
+            # ---- LOGO (bada center top) ----
             if logo_img and logo_ir:
-                logo_area_h = right_h * 0.40   # bada area
+                logo_area_h = right_h * 0.40
                 ratio = logo_img.height / logo_img.width
                 logo_h = logo_area_h
                 logo_w = logo_h / ratio
-                max_logo_w = right_w * 0.45    # width bhi bada
+                max_logo_w = right_w * 0.45
                 if logo_w > max_logo_w:
                     logo_w = max_logo_w
                     logo_h = logo_w * ratio
@@ -180,7 +176,6 @@ if st.button("Generate Label", use_container_width=True):
 
                 top_line_y = logo_y - 2 * mm
                 c.setLineWidth(2)
-                c.setStrokeColor(HexColor("#333333"))
                 c.line(
                     right_x + 3 * mm,
                     top_line_y,
@@ -188,15 +183,15 @@ if st.button("Generate Label", use_container_width=True):
                     top_line_y,
                 )
 
-                barcode_area_bottom = right_y + right_h * 0.38
+                barcode_area_bottom = right_y + right_h * 0.40
                 barcode_area_top = top_line_y - 2 * mm
             else:
-                barcode_area_bottom = right_y + right_h * 0.20
-                barcode_area_top = right_y + right_h - 3 * mm
+                barcode_area_bottom = right_y + right_h * 0.25
+                barcode_area_top = right_y + right_h - 4 * mm
 
             # ---- BARCODE ----
             barcode_area_h = barcode_area_top - barcode_area_bottom
-            bar_w = right_w * 0.90
+            bar_w = right_w * 0.92
             bar_h = barcode_area_h * 0.70
 
             bar_x = center_x - bar_w / 2.0
@@ -212,7 +207,7 @@ if st.button("Generate Label", use_container_width=True):
             )
 
             # ---- BOTTOM LINE ----
-            bottom_line_y = bar_y - 2.5 * mm
+            bottom_line_y = bar_y - 2.0 * mm
             c.setLineWidth(2)
             c.line(
                 right_x + 3 * mm,
@@ -221,19 +216,20 @@ if st.button("Generate Label", use_container_width=True):
                 bottom_line_y,
             )
 
-            # ---- TEXT: FULL WIDTH ME FIT ----
+            # ---- TEXT: AUTO FIT, FULL WIDTH ----
             text_area_bottom = right_y + 4 * mm
             text_area_top = bottom_line_y - 2 * mm
             text_center_y = (text_area_bottom + text_area_top) / 2.0
 
             c.setFillColor(black)
-
-            # font size choose karne ke liye ek chhota helper:
-            # bada size try karo, jab tak width box se bahar na nikle
-            max_width = right_w - 6 * mm  # thoda side margin
             base_font = "Helvetica-Bold"
-            size = 36  # start big
-            while size > 18:
+
+            # Max usable width (chota margin only)
+            max_width = right_w - 6 * mm
+
+            # Start big, reduce till fit
+            size = 40
+            while size > 16:
                 w = c.stringWidth(barcode_text, base_font, size)
                 if w <= max_width:
                     break
@@ -248,7 +244,7 @@ if st.button("Generate Label", use_container_width=True):
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("✅ Label ready! Text box me nicely fit + logo bada.")
+            st.success("✅ Label ready! Text auto-fit, logo bada, arrow print-friendly.")
             st.download_button(
                 "⬇️ Download PDF",
                 data=pdf_bytes,
