@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.utils import ImageReader
@@ -7,44 +7,47 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 
+# ---------- Streamlit page config ----------
 st.set_page_config(page_title="Logo + Barcode Label Maker", page_icon="🎫")
 
 st.title("Logo + Barcode Label Maker")
-st.write("Logo image + Barcode text → Combined Label PDF")
+st.write("Logo image + Barcode text → label PDF bana dega.")
 
-# ---- Inputs ----
+# ---------- Inputs ----------
 logo_file = st.file_uploader(
-    "Logo image upload karo (PNG/JPG)",
+    "Logo image upload karo (PNG / JPG)",
     type=["png", "jpg", "jpeg"]
 )
 
 barcode_text = st.text_input(
-    "Barcode text daalо (jaise: W102-07-01-01-03)",
+    "Barcode text daalo (jaise: W102-07-01-01-03)",
     value="W102-07-01-01-03"
 )
 
 label_width_mm = st.number_input("Label width (mm)", value=50.0)
 label_height_mm = st.number_input("Label height (mm)", value=30.0)
 
+# ---------- Button ----------
 if st.button("Generate Label"):
 
+    # Basic validation
     if logo_file is None:
-        st.error("Logo upload karo.")
+        st.error("Pehle logo image upload karo.")
     elif not barcode_text.strip():
-        st.error("Barcode text daalo.")
+        st.error("Barcode text khali hai.")
     else:
         try:
-            # ---- Logo load ----
+            # ----- 1) Logo load -----
             logo_img = Image.open(logo_file).convert("RGBA")
 
-            # ---- Barcode generate (Code128) ----
-            bar_buffer = io.BytesIO()
-            barcode_obj = barcode.get('code128', barcode_text, writer=ImageWriter())
-            barcode_obj.write(bar_buffer)
-            bar_buffer.seek(0)
-            bar_img = Image.open(bar_buffer).convert("RGBA")
+            # ----- 2) Barcode image generate (Code128) -----
+            bar_buf = io.BytesIO()
+            code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
+            code128.write(bar_buf)          # PNG bytes
+            bar_buf.seek(0)
+            bar_img = Image.open(bar_buf).convert("RGBA")
 
-            # ---- Label PDF canvas ----
+            # ----- 3) Label PDF canvas -----
             lw = float(label_width_mm) * mm
             lh = float(label_height_mm) * mm
 
@@ -52,49 +55,64 @@ if st.button("Generate Label"):
             c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
 
             def pil_to_buf(img):
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                buf.seek(0)
-                return buf
+                b = io.BytesIO()
+                img.save(b, format="PNG")
+                b.seek(0)
+                return b
 
             logo_buf = pil_to_buf(logo_img)
-            bar_buf = pil_to_buf(bar_img)
+            bar_img_buf = pil_to_buf(bar_img)
 
-            # ---- Sizes ----
+            # ----- 4) Sizes (mm) -----
+            # Logo
             logo_w = 20.0 * mm
             logo_ratio = logo_img.height / logo_img.width
             logo_h = logo_w * logo_ratio
 
+            # Barcode
             bar_w = 40.0 * mm
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            # ---- Positions ----
+            # ----- 5) Positions -----
             logo_x = (lw - logo_w) / 2.0
-            logo_y = lh - logo_h - 5.0 * mm
+            logo_y = lh - logo_h - 5.0 * mm   # top side
 
             bar_x = (lw - bar_w) / 2.0
-            bar_y = 5.0 * mm
+            bar_y = 5.0 * mm                  # bottom side
 
-            # ---- Draw ----
-            c.drawImage(ImageReader(logo_buf), logo_x, logo_y,
-                        width=logo_w, height=logo_h, mask='auto')
+            # ----- 6) Draw on PDF -----
+            c.drawImage(
+                ImageReader(logo_buf),
+                logo_x,
+                logo_y,
+                width=logo_w,
+                height=logo_h,
+                mask="auto",
+            )
 
-            c.drawImage(ImageReader(bar_buf), bar_x, bar_y,
-                        width=bar_w, height=bar_h, mask='auto')
+            c.drawImage(
+                ImageReader(bar_img_buf),
+                bar_x,
+                bar_y,
+                width=bar_w,
+                height=bar_h,
+                mask="auto",
+            )
 
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
-            out_bytes = pdf_buffer.getvalue()
+            pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Label ready ho gaya! ✅")
+            # ----- 7) Download -----
+            st.success("Label ready ho gaya ✅")
             st.download_button(
                 label="Download Label PDF",
-                data=out_bytes,
+                data=pdf_bytes,
                 file_name=f"label_{barcode_text}.pdf",
-                mime="application/pdf"
+                mime="application/pdf",
             )
 
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error aaya: {e}")
