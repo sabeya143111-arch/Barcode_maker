@@ -4,11 +4,14 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.utils import ImageReader
 import io
+import subprocess
+import os
+from pathlib import Path
 
 st.set_page_config(page_title="Logo + Barcode Label Maker", page_icon="🎫")
 
 st.title("Logo + Barcode Label Maker")
-st.write("Logo image + Barcode image se label PDF banayega.")
+st.write("Logo image + Barcode PDF → Combined Label PDF")
 
 # ---- Inputs ----
 logo_file = st.file_uploader(
@@ -17,8 +20,8 @@ logo_file = st.file_uploader(
 )
 
 bar_file = st.file_uploader(
-    "Barcode image upload karo (PNG/JPG)",
-    type=["png", "jpg", "jpeg"]
+    "Barcode PDF upload karo",
+    type=["pdf"]
 )
 
 label_width_mm = st.number_input("Label width (mm)", value=50.0)
@@ -27,12 +30,43 @@ label_height_mm = st.number_input("Label height (mm)", value=30.0)
 if st.button("Generate Label"):
 
     if logo_file is None or bar_file is None:
-        st.error("Dono files upload karo: logo + barcode image.")
+        st.error("Dono files upload karo: logo + barcode PDF.")
     else:
-        logo_img = Image.open(logo_file).convert("RGBA")
-        bar_img = Image.open(bar_file).convert("RGBA")
+        # ---- Convert PDF to Image ----
+        try:
+            # Save uploaded PDF temporarily
+            pdf_path = "/tmp/barcode_temp.pdf"
+            with open(pdf_path, "wb") as f:
+                f.write(bar_file.read())
 
-        # ----- canvas size (as float) -----
+            # Use Ghostscript to convert PDF to image
+            img_path = "/tmp/barcode_temp.png"
+            cmd = [
+                "gs",
+                "-q",
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-dSAFER",
+                "-sDEVICE=png16m",
+                "-r150",
+                f"-sOutputFile={img_path}",
+                pdf_path
+            ]
+            subprocess.run(cmd, check=True)
+
+            bar_img = Image.open(img_path).convert("RGBA")
+            os.remove(pdf_path)
+            os.remove(img_path)
+
+        except Exception as e:
+            st.error(f"PDF convert error: {str(e)}")
+            st.info("Agar Ghostscript error aaye, Streamlit Cloud ke 'Manage app' section me bata dena.")
+            st.stop()
+
+        # ---- Logo load ----
+        logo_img = Image.open(logo_file).convert("RGBA")
+
+        # ---- canvas size ----
         lw = float(label_width_mm) * mm
         lh = float(label_height_mm) * mm
 
@@ -64,7 +98,7 @@ if st.button("Generate Label"):
         bar_x = (lw - bar_w) / 2.0
         bar_y = 5.0 * mm
 
-        # Draw
+        # ---- Draw ----
         c.drawImage(ImageReader(logo_buf), logo_x, logo_y,
                     width=logo_w, height=logo_h, mask='auto')
 
@@ -76,7 +110,7 @@ if st.button("Generate Label"):
         pdf_buffer.seek(0)
         out_bytes = pdf_buffer.getvalue()
 
-        st.success("Label ready ho gaya.")
+        st.success("Label ready ho gaya!")
         st.download_button(
             label="Download Label PDF",
             data=out_bytes,
