@@ -8,10 +8,9 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 
-st.set_page_config(page_title="Professional Barcode Label", page_icon="🎫")
+st.set_page_config(page_title="Perfect Warehouse Label", page_icon="🎫")
 
-st.title("Professional Barcode Label Maker")
-st.write("Arrow + Brand Logo + Barcode → Professional label")
+st.title("Perfect Warehouse Label Maker")
 
 logo_file = st.file_uploader(
     "Company Logo upload karo (PNG / JPG)",
@@ -23,8 +22,9 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
+# A4 ke ek chhote label jaisa ratio
 label_width_mm = st.number_input("Label width (mm)", value=200.0)
-label_height_mm = st.number_input("Label height (mm)", value=80.0)
+label_height_mm = st.number_input("Label height (mm)", value=70.0)
 
 if st.button("Generate Label"):
 
@@ -60,34 +60,28 @@ if st.button("Generate Label"):
             logo_buf = pil_to_buf(logo_img)
             bar_img_buf = pil_to_buf(bar_img)
 
-            # --------- LAYOUT: LEFT ARROW | RIGHT (LOGO TOP, BARCODE MIDDLE, TEXT BOTTOM) ----------
-            margin = 8 * mm
-            gap = 8 * mm
+            margin = 6 * mm
+            inner_gap = 4 * mm
 
-            # LEFT: Arrow block
-            arrow_w = lw * 0.32
-            arrow_h = lh - 2 * margin
+            # ===== LEFT: ARROW BLOCK =====
+            arrow_block_w = lw * 0.30
+            arrow_block_h = lh - 2 * margin
 
             arrow_x = margin
-            arrow_y = (lh - arrow_h) / 2.0
+            arrow_y = (lh - arrow_block_h) / 2.0
 
-            # RIGHT: Logo + Barcode + Text block
-            right_x = arrow_x + arrow_w + gap
-            right_w = lw - right_x - margin
-
-            # ------ 1) ARROW (BIG, ORANGE, LEFT SIDE) ------
-            mid_x = arrow_x + arrow_w / 2.0
-            head_height = arrow_h * 0.5
-            shaft_width = arrow_w * 0.4
+            mid_x = arrow_x + arrow_block_w / 2.0
+            head_height = arrow_block_h * 0.45
+            shaft_width = arrow_block_w * 0.40
 
             p = c.beginPath()
             p.moveTo(mid_x - shaft_width / 2, arrow_y)
             p.lineTo(mid_x + shaft_width / 2, arrow_y)
-            p.lineTo(mid_x + shaft_width / 2, arrow_y + arrow_h - head_height)
-            p.lineTo(arrow_x + arrow_w, arrow_y + arrow_h - head_height)
-            p.lineTo(mid_x, arrow_y + arrow_h)
-            p.lineTo(arrow_x, arrow_y + arrow_h - head_height)
-            p.lineTo(mid_x - shaft_width / 2, arrow_y + arrow_h - head_height)
+            p.lineTo(mid_x + shaft_width / 2, arrow_y + arrow_block_h - head_height)
+            p.lineTo(arrow_x + arrow_block_w, arrow_y + arrow_block_h - head_height)
+            p.lineTo(mid_x, arrow_y + arrow_block_h)
+            p.lineTo(arrow_x, arrow_y + arrow_block_h - head_height)
+            p.lineTo(mid_x - shaft_width / 2, arrow_y + arrow_block_h - head_height)
             p.close()
 
             orange = Color(1, 0.55, 0.20)
@@ -95,19 +89,30 @@ if st.button("Generate Label"):
             c.setStrokeColor(orange)
             c.drawPath(p, stroke=1, fill=1)
 
-            # ------ 2) LOGO (TOP, PROMINENT) ------
-            logo_max_h = lh * 0.45   # Logo 45% height
-            logo_ratio = logo_img.height / logo_img.width
-            logo_h = logo_max_h
-            logo_w = logo_h / logo_ratio
+            # ===== RIGHT: LOGO + BARCODE + TEXT ONE COLUMN =====
+            right_x = arrow_x + arrow_block_w + inner_gap
+            right_w = lw - right_x - margin
 
-            # Agar logo bada ho gaya right side se, width compress karo
+            # Column total height minus top/bottom margin
+            col_top = lh - margin
+            col_bottom = margin
+            col_height = col_top - col_bottom
+
+            # 3 parts: Logo (35%), Barcode (40%), Text area (25%)
+            logo_area_h = col_height * 0.35
+            barcode_area_h = col_height * 0.40
+            text_area_h = col_height * 0.25
+
+            # ---- 1) Logo (top area, center, no extra gap) ----
+            logo_ratio = logo_img.height / logo_img.width
+            logo_h = logo_area_h
+            logo_w = logo_h / logo_ratio
             if logo_w > right_w:
-                logo_w = right_w * 0.85
+                logo_w = right_w
                 logo_h = logo_w * logo_ratio
 
-            logo_x = right_x + (right_w - logo_w) / 2.0    # center align
-            logo_y = lh - logo_h - 6 * mm                   # top side
+            logo_y = col_top - logo_h
+            logo_x = right_x + (right_w - logo_w) / 2.0
 
             c.drawImage(
                 ImageReader(logo_buf),
@@ -118,19 +123,17 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ------ 3) BARCODE (MIDDLE, LOGO KE NICHE) ------
-            barcode_area_h = lh * 0.35
-            bar_w = right_w * 0.95
+            # ---- 2) Barcode (logo ke just niche, full width) ----
+            bar_w = right_w
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
-
             if bar_h > barcode_area_h:
                 scale = barcode_area_h / bar_h
                 bar_w *= scale
                 bar_h *= scale
 
             bar_x = right_x + (right_w - bar_w) / 2.0
-            bar_y = logo_y - bar_h - 6 * mm    # logo ke bilkul niche
+            bar_y = logo_y - bar_h - inner_gap
 
             c.drawImage(
                 ImageReader(bar_img_buf),
@@ -141,20 +144,20 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ------ 4) TEXT (BOTTOM, BOLD) ------
+            # ---- 3) Text (barcode ke just niche, center, no extra gap) ----
             c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 24)
-            text_y = bar_y - 8 * mm
+            c.setFont("Helvetica-Bold", 22)
+            text_y = bar_y - inner_gap - 4 * mm
             text_x = right_x + right_w / 2.0
             c.drawCentredString(text_x, text_y, barcode_text)
 
-            # --------- Finish ----------
+            # ===== DONE =====
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Professional label ready ✅")
+            st.success("Perfect label ready ✅")
             st.download_button(
                 label="Download Label PDF",
                 data=pdf_bytes,
