@@ -58,106 +58,53 @@ def load_logo(uploaded_file=None):
         return None, None
 
 
-# ================== PAGE CONFIG ==================
-st.set_page_config(
-    page_title="Warehouse Label",
-    page_icon="🏷️",
-    layout="wide"
-)
-
+st.set_page_config(page_title="Warehouse Label", page_icon="🏷️", layout="wide")
 st.title("🏷️ Warehouse Label Maker (Odoo Ready)")
 
-# ================== LAYOUT: SIDEBAR ==================
+# ===== SIDEBAR INPUTS =====
 with st.sidebar:
-    st.header("⚙️ Global Settings")
+    st.header("⚙️ Settings")
 
     barcode_text = st.text_input(
-        "Location Code",
+        "Location Code (jaise: W13-07-07-01-02)",
         value="W13-07-07-01-02",
-        help="Jaise: W13-07-07-01-02"
     )
 
-    label_width_mm = st.number_input(
-        "Label width (mm)",
-        min_value=20.0,
-        max_value=500.0,
-        value=210.0,
-        step=1.0
-    )
-    label_height_mm = st.number_input(
-        "Label height (mm)",
-        min_value=10.0,
-        max_value=200.0,
-        value=60.0,
-        step=1.0
-    )
+    label_width_mm = st.number_input("Label width (mm)", value=210.0, min_value=20.0)
+    label_height_mm = st.number_input("Label height (mm)", value=60.0, min_value=20.0)
 
-    st.markdown("---")
-    st.subheader("🎨 Text & Band")
+    st.markdown("### 🎨 Text")
 
     text_font_size = st.slider(
-        "Text font size",
-        min_value=16,
-        max_value=90,
-        value=60,
-        step=1
+        "Text font size", min_value=16, max_value=90, value=60, step=1
     )
 
     underline_gap_mm = st.slider(
-        "Text–underline gap (mm)",
-        min_value=1.0,
-        max_value=10.0,
-        value=3.0,
-        step=0.5,
+        "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=3.0, step=0.5
     )
 
-    band_color_hex = st.color_picker(
-        "Band color",
-        value="#FF7A1A",
-        help="Orange band ka color"
-    )
-
-    st.markdown("---")
-    st.subheader("🏢 Logo")
-
+    st.markdown("### 🏢 Logo")
     logo_scale = st.slider(
-        "Logo size (%)",
-        min_value=20,
-        max_value=80,
-        value=45,
-        step=5
+        "Logo size (%)", min_value=20, max_value=80, value=45, step=5
     )
 
     uploaded_logo = st.file_uploader(
-        "Custom logo (PNG/JPG)",
-        type=["png", "jpg", "jpeg"]
+        "Custom logo (PNG/JPG)", type=["png", "jpg", "jpeg"]
     )
 
-    st.markdown("---")
-    st.subheader("📦 Barcode options")
-
+    st.markdown("### 📦 Barcode")
     module_height = st.slider(
-        "Barcode height (module_height)",
-        min_value=5,
-        max_value=40,
-        value=18,
-        step=1
+        "Barcode height (module_height)", min_value=5, max_value=40, value=18, step=1
     )
-
     module_width = st.slider(
         "Barcode thickness (module_width)",
         min_value=0.2,
         max_value=1.0,
         value=0.45,
-        step=0.05
+        step=0.05,
     )
-
     dpi_value = st.slider(
-        "Barcode DPI",
-        min_value=300,
-        max_value=1200,
-        value=600,
-        step=100
+        "Barcode DPI", min_value=300, max_value=1200, value=600, step=100
     )
 
     st.markdown("---")
@@ -165,10 +112,7 @@ with st.sidebar:
     download_btn = st.button("⬇️ Generate & Download PDF")
 
 
-# ================== PDF BUILDER ==================
 def build_pdf(
-    return_png_preview: bool = False,
-    band_color: str = "#FF7A1A",
     module_h: int = 18,
     module_w: float = 0.45,
     dpi: int = 600,
@@ -326,7 +270,7 @@ def build_pdf(
         bottom_line_y,
     )
 
-    # ==== TEXT BAND (do line ke beech) ====
+    # ==== TEXT AREA (ab koi orange band nahi) ====
     band_bottom_y = right_y + 3 * mm
     band_top_y = bottom_line_y - underline_gap_mm * mm
     text_center_y = (band_top_y + band_bottom_y) / 2.0
@@ -340,25 +284,12 @@ def build_pdf(
         band_bottom_y,
     )
 
-    # ---- BAND COLOR (editable) ----
-    band_margin_x = 4 * mm
-    band_height = band_top_y - band_bottom_y
-
-    c.setFillColor(HexColor(band_color))
-    c.roundRect(
-        right_x + band_margin_x,
-        band_bottom_y,
-        right_w - 2 * band_margin_x,
-        band_height,
-        2 * mm,
-        stroke=0,
-        fill=1,
-    )
-
-    # ---- TEXT: band ke 90% height tak ----
+    # Sirf text white background par
     c.setFillColor(black)
     base_font = "Helvetica-Bold"
 
+    band_margin_x = 4 * mm
+    band_height = band_top_y - band_bottom_y
     max_width = right_w - 2 * band_margin_x - 2 * mm
     max_font_from_height = abs(band_height) * 0.90
 
@@ -380,7 +311,7 @@ def build_pdf(
     return pdf_buffer.getvalue()
 
 
-# ================== MAIN AREA ==================
+# ===== MAIN AREA =====
 col_preview, col_info = st.columns([3, 1])
 
 with col_preview:
@@ -388,12 +319,11 @@ with col_preview:
     if preview_btn:
         try:
             pdf_bytes = build_pdf(
-                band_color=band_color_hex,
                 module_h=module_height,
                 module_w=module_width,
                 dpi=dpi_value,
             )
-            st.success("Preview ready. Niche se download karke dekh sakte ho.")
+            st.success("Preview ready.")
             st.download_button(
                 "⬇️ Download preview PDF",
                 data=pdf_bytes,
@@ -407,7 +337,6 @@ with col_preview:
     if download_btn:
         try:
             pdf_bytes = build_pdf(
-                band_color=band_color_hex,
                 module_h=module_height,
                 module_w=module_width,
                 dpi=dpi_value,
@@ -425,15 +354,9 @@ with col_preview:
 
 with col_info:
     st.subheader("ℹ️ Current Settings")
-    st.write(f"**Code**: {barcode_text}")
+    st.write(f"Code: {barcode_text}")
     st.write(f"Size: {label_width_mm} mm × {label_height_mm} mm")
     st.write(f"Font size: {text_font_size} pt")
-    st.write(f"Band color: {band_color_hex}")
     st.write(f"Logo scale: {logo_scale}%")
     st.write(f"Barcode DPI: {dpi_value}")
     st.write(f"Module (h × w): {module_height} × {module_width}")
-
-    st.markdown("---")
-    st.caption(
-        "Sab settings sidebar se live change karo, phir Preview / Final PDF generate karo."
-    )
