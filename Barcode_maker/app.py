@@ -8,43 +8,43 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 
-st.set_page_config(page_title="Arrow + Logo + Barcode Label", page_icon="🎫")
+st.set_page_config(page_title="Professional Barcode Label", page_icon="🎫")
 
-st.title("Arrow + Logo + Barcode Label Maker")
+st.title("Professional Barcode Label Maker")
+st.write("Arrow + Brand Logo + Barcode → Professional label")
 
 logo_file = st.file_uploader(
-    "Logo image upload karo (PNG / JPG)",
+    "Company Logo upload karo (PNG / JPG)",
     type=["png", "jpg", "jpeg"]
 )
 
 barcode_text = st.text_input(
-    "Barcode text daalo (jaise: W102-07-01-01-03)",
+    "Product Code (jaise: W102-07-01-01-03)",
     value="W102-07-01-01-03"
 )
 
-label_width_mm = st.number_input("Label width (mm)", value=180.0)
-label_height_mm = st.number_input("Label height (mm)", value=60.0)
+label_width_mm = st.number_input("Label width (mm)", value=200.0)
+label_height_mm = st.number_input("Label height (mm)", value=80.0)
 
 if st.button("Generate Label"):
 
     if logo_file is None:
-        st.error("Pehle logo image upload karo.")
+        st.error("Pehle company logo upload karo.")
     elif not barcode_text.strip():
-        st.error("Barcode text khali hai.")
+        st.error("Product code khali hai.")
     else:
         try:
-            # --------- Logo load ----------
+            # --------- Load images ----------
             logo_img = Image.open(logo_file).convert("RGBA")
 
-            # --------- Barcode image (no text) ----------
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-            render_opts = {"write_text": False}      # [web:19][web:20]
+            render_opts = {"write_text": False}
             code128.render(render_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
 
-            # --------- PDF canvas ----------
+            # --------- PDF Canvas ----------
             lw = float(label_width_mm) * mm
             lh = float(label_height_mm) * mm
 
@@ -60,32 +60,34 @@ if st.button("Generate Label"):
             logo_buf = pil_to_buf(logo_img)
             bar_img_buf = pil_to_buf(bar_img)
 
-            # --------- Layout:  left arrow, right logo+barcode+text ---------
-            left_margin = 5 * mm
-            right_margin = 5 * mm
-            gap = 6 * mm
+            # --------- LAYOUT: LEFT ARROW | RIGHT (LOGO TOP, BARCODE MIDDLE, TEXT BOTTOM) ----------
+            margin = 8 * mm
+            gap = 8 * mm
 
-            arrow_block_w = lw * 0.30
-            arrow_block_h = lh - 10 * mm
+            # LEFT: Arrow block
+            arrow_w = lw * 0.32
+            arrow_h = lh - 2 * margin
 
-            # ------ Arrow (left) ------
-            arrow_x0 = left_margin
-            arrow_y0 = (lh - arrow_block_h) / 2.0
-            arrow_x1 = arrow_x0 + arrow_block_w
-            arrow_y1 = arrow_y0 + arrow_block_h
+            arrow_x = margin
+            arrow_y = (lh - arrow_h) / 2.0
 
-            mid_x = (arrow_x0 + arrow_x1) / 2.0
-            head_height = arrow_block_h * 0.45
-            shaft_width = arrow_block_w * 0.35
+            # RIGHT: Logo + Barcode + Text block
+            right_x = arrow_x + arrow_w + gap
+            right_w = lw - right_x - margin
+
+            # ------ 1) ARROW (BIG, ORANGE, LEFT SIDE) ------
+            mid_x = arrow_x + arrow_w / 2.0
+            head_height = arrow_h * 0.5
+            shaft_width = arrow_w * 0.4
 
             p = c.beginPath()
-            p.moveTo(mid_x - shaft_width / 2, arrow_y0)
-            p.lineTo(mid_x + shaft_width / 2, arrow_y0)
-            p.lineTo(mid_x + shaft_width / 2, arrow_y0 + arrow_block_h - head_height)
-            p.lineTo(arrow_x1, arrow_y0 + arrow_block_h - head_height)
-            p.lineTo(mid_x, arrow_y1)
-            p.lineTo(arrow_x0, arrow_y0 + arrow_block_h - head_height)
-            p.lineTo(mid_x - shaft_width / 2, arrow_y0 + arrow_block_h - head_height)
+            p.moveTo(mid_x - shaft_width / 2, arrow_y)
+            p.lineTo(mid_x + shaft_width / 2, arrow_y)
+            p.lineTo(mid_x + shaft_width / 2, arrow_y + arrow_h - head_height)
+            p.lineTo(arrow_x + arrow_w, arrow_y + arrow_h - head_height)
+            p.lineTo(mid_x, arrow_y + arrow_h)
+            p.lineTo(arrow_x, arrow_y + arrow_h - head_height)
+            p.lineTo(mid_x - shaft_width / 2, arrow_y + arrow_h - head_height)
             p.close()
 
             orange = Color(1, 0.55, 0.20)
@@ -93,18 +95,19 @@ if st.button("Generate Label"):
             c.setStrokeColor(orange)
             c.drawPath(p, stroke=1, fill=1)
 
-            # ------ Right side area (logo + barcode + text) ------
-            right_x0 = left_margin + arrow_block_w + gap
-            right_w = lw - right_x0 - right_margin
-
-            # --- Logo on top of barcode ---
-            logo_max_width = right_w * 0.35
+            # ------ 2) LOGO (TOP, PROMINENT) ------
+            logo_max_h = lh * 0.45   # Logo 45% height
             logo_ratio = logo_img.height / logo_img.width
-            logo_w = logo_max_width
-            logo_h = logo_w * logo_ratio
+            logo_h = logo_max_h
+            logo_w = logo_h / logo_ratio
 
-            logo_x = right_x0
-            logo_y = lh - logo_h - 8 * mm   # top se thoda niche
+            # Agar logo bada ho gaya right side se, width compress karo
+            if logo_w > right_w:
+                logo_w = right_w * 0.85
+                logo_h = logo_w * logo_ratio
+
+            logo_x = right_x + (right_w - logo_w) / 2.0    # center align
+            logo_y = lh - logo_h - 6 * mm                   # top side
 
             c.drawImage(
                 ImageReader(logo_buf),
@@ -115,20 +118,19 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # --- Barcode just to the right of logo, aligned bottom of logo ---
-            bar_available_w = right_w - logo_w - 4 * mm
-            bar_w = bar_available_w
+            # ------ 3) BARCODE (MIDDLE, LOGO KE NICHE) ------
+            barcode_area_h = lh * 0.35
+            bar_w = right_w * 0.95
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            max_bar_height = logo_h  # barcode ki height ~ logo height
-            if bar_h > max_bar_height:
-                scale = max_bar_height / bar_h
+            if bar_h > barcode_area_h:
+                scale = barcode_area_h / bar_h
                 bar_w *= scale
                 bar_h *= scale
 
-            bar_x = logo_x + logo_w + 4 * mm
-            bar_y = logo_y   # top align with logo
+            bar_x = right_x + (right_w - bar_w) / 2.0
+            bar_y = logo_y - bar_h - 6 * mm    # logo ke bilkul niche
 
             c.drawImage(
                 ImageReader(bar_img_buf),
@@ -139,12 +141,12 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # --- Big text under full right area ---
+            # ------ 4) TEXT (BOTTOM, BOLD) ------
             c.setFillColor(black)
-            c.setFont("Helvetica-Bold", 20)
+            c.setFont("Helvetica-Bold", 24)
             text_y = bar_y - 8 * mm
-            text_center_x = right_x0 + right_w / 2.0
-            c.drawCentredString(text_center_x, text_y, barcode_text)  # [web:24][web:26]
+            text_x = right_x + right_w / 2.0
+            c.drawCentredString(text_x, text_y, barcode_text)
 
             # --------- Finish ----------
             c.showPage()
@@ -152,13 +154,13 @@ if st.button("Generate Label"):
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()
 
-            st.success("Label ready ho gaya ✅")
+            st.success("Professional label ready ✅")
             st.download_button(
                 label="Download Label PDF",
                 data=pdf_bytes,
-                file_name=f"arrow_logo_barcode_{barcode_text}.pdf",
+                file_name=f"label_{barcode_text}.pdf",
                 mime="application/pdf",
             )
 
         except Exception as e:
-            st.error(f"Error aaya: {e}")
+            st.error(f"Error: {e}")
