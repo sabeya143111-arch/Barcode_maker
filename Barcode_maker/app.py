@@ -22,7 +22,6 @@ barcode_text = st.text_input(
     value="W102-07-01-01-03"
 )
 
-# Bada label (almost A4 width ka half)
 label_width_mm = st.number_input("Label width (mm)", value=210.0)
 label_height_mm = st.number_input("Label height (mm)", value=80.0)
 
@@ -37,14 +36,14 @@ if st.button("Generate Label"):
             # --------- Logo load ----------
             logo_img = Image.open(logo_file).convert("RGBA")
 
-            # --------- High‑DPI barcode (600 dpi, no text) ----------
+            # --------- High‑DPI barcode ----------
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
             writer_opts = {
                 "write_text": False,
                 "dpi": 600,
                 "module_height": 15,
-            }  # [web:31][web:44]
+            }
             code128.render(writer_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
@@ -67,8 +66,8 @@ if st.button("Generate Label"):
 
             margin = 8 * mm
 
-            # ===== LEFT: animated style arrow =====
-            arrow_block_w = lw * 0.30
+            # ===== LEFT: arrow =====
+            arrow_block_w = lw * 0.32          # thoda wide
             arrow_block_h = lh - 2 * margin
 
             arrow_x = margin
@@ -76,8 +75,8 @@ if st.button("Generate Label"):
 
             mid_x = arrow_x + arrow_block_w / 2.0
             head_height = arrow_block_h * 0.5
-            shaft_width_top = arrow_block_w * 0.28
-            shaft_width_bottom = arrow_block_w * 0.40
+            shaft_width_top = arrow_block_w * 0.26
+            shaft_width_bottom = arrow_block_w * 0.38
             base_h = arrow_block_h * 0.18
 
             p = c.beginPath()
@@ -97,9 +96,9 @@ if st.button("Generate Label"):
             c.setStrokeColor(orange)
             c.drawPath(p, stroke=0, fill=1)
 
-            # ===== RIGHT COLUMN: logo + underline + barcode + text =====
-            # Arrow ke bahut paas start (gap ~2mm)
-            right_x = arrow_x + arrow_block_w + 2 * mm
+            # ===== RIGHT COLUMN (bilkul arrow ke paas) =====
+            tiny_gap = 1 * mm               # almost no gap
+            right_x = arrow_x + arrow_block_w + tiny_gap
             right_w = lw - right_x - margin
 
             col_top = lh - margin
@@ -113,8 +112,9 @@ if st.button("Generate Label"):
             logo_ratio = logo_img.height / logo_img.width
             logo_h = logo_area_h
             logo_w = logo_h / logo_ratio
-            if logo_w > right_w:
-                logo_w = right_w
+            max_logo_w = right_w * 0.6        # center me compact
+            if logo_w > max_logo_w:
+                logo_w = max_logo_w
                 logo_h = logo_w * logo_ratio
 
             logo_y = col_top - logo_h
@@ -129,18 +129,20 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- Underline (logo ke bilkul niche) ----
+            # ---- Common center line for underline + barcode + text ----
+            center_x = right_x + right_w / 2.0
+
+            # ---- Underline (logo se thoda wider, center) ----
             line_margin = 2 * mm
             line_y = logo_y - line_margin
-            line_x1 = right_x + right_w * 0.10
-            line_x2 = right_x + right_w * 0.90
+            line_half = max(logo_w * 0.6, right_w * 0.35)
 
             c.setStrokeColor(orange)
             c.setLineWidth(2)
-            c.line(line_x1, line_y, line_x2, line_y)
+            c.line(center_x - line_half, line_y, center_x + line_half, line_y)
 
-            # ---- Barcode (underline ke just niche) ----
-            bar_w = right_w
+            # ---- Barcode (underline ke just niche, center) ----
+            bar_w = line_half * 2 * 0.95      # underline ke just andar
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
             if bar_h > barcode_area_h:
@@ -148,7 +150,7 @@ if st.button("Generate Label"):
                 bar_w *= scale
                 bar_h *= scale
 
-            bar_x = right_x + (right_w - bar_w) / 2.0
+            bar_x = center_x - bar_w / 2.0
             bar_y = line_y - bar_h - 2 * mm
 
             c.drawImage(
@@ -160,14 +162,13 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- Text (barcode ke niche, bada) ----
+            # ---- Text (center, barcode ke thoda niche) ----
             c.setFillColor(black)
             c.setFont("Helvetica-Bold", 26)
             text_y = bar_y - 6 * mm
-            text_x = right_x + right_w / 2.0
-            c.drawCentredString(text_x, text_y, barcode_text)  # [web:24][web:26]
+            c.drawCentredString(center_x, text_y, barcode_text)
 
-            # ===== FINISH =====
+            # ===== DONE =====
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
