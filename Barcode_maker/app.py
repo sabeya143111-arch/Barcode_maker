@@ -8,11 +8,14 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 
-st.set_page_config(page_title="Arrow + Barcode Label", page_icon="🎫")
+st.set_page_config(page_title="Arrow + Logo + Barcode Label", page_icon="🎫")
 
-st.title("Arrow + Barcode Label Maker")
+st.title("Arrow + Logo + Barcode Label Maker")
 
-logo_file = None   # yahan abhi logo nahi, sirf arrow + barcode bana rahe hain
+logo_file = st.file_uploader(
+    "Logo image upload karo (PNG / JPG)",
+    type=["png", "jpg", "jpeg"]
+)
 
 barcode_text = st.text_input(
     "Barcode text daalo (jaise: W102-07-01-01-03)",
@@ -24,14 +27,19 @@ label_height_mm = st.number_input("Label height (mm)", value=60.0)
 
 if st.button("Generate Label"):
 
-    if not barcode_text.strip():
+    if logo_file is None:
+        st.error("Pehle logo image upload karo.")
+    elif not barcode_text.strip():
         st.error("Barcode text khali hai.")
     else:
         try:
+            # --------- Logo load ----------
+            logo_img = Image.open(logo_file).convert("RGBA")
+
             # --------- Barcode image (no text) ----------
             bar_buf = io.BytesIO()
             code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-            render_opts = {"write_text": False}  # text hatane ke liye [web:19][web:20]
+            render_opts = {"write_text": False}      # [web:19][web:20]
             code128.render(render_opts).save(bar_buf, format="PNG")
             bar_buf.seek(0)
             bar_img = Image.open(bar_buf).convert("RGBA")
@@ -43,63 +51,84 @@ if st.button("Generate Label"):
             pdf_buffer = io.BytesIO()
             c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
 
-            # ---- Layout: left arrow block, right barcode block ----
+            def pil_to_buf(img):
+                b = io.BytesIO()
+                img.save(b, format="PNG")
+                b.seek(0)
+                return b
+
+            logo_buf = pil_to_buf(logo_img)
+            bar_img_buf = pil_to_buf(bar_img)
+
+            # --------- Layout:  left arrow, right logo+barcode+text ---------
             left_margin = 5 * mm
             right_margin = 5 * mm
-            gap = 5 * mm
+            gap = 6 * mm
 
-            arrow_block_w = lw * 0.30       # 30% width arrow ke liye
+            arrow_block_w = lw * 0.30
             arrow_block_h = lh - 10 * mm
 
-            bar_area_x = left_margin + arrow_block_w + gap
-            bar_area_w = lw - bar_area_x - right_margin
-
-            # ---- Arrow shape (filled) ----
+            # ------ Arrow (left) ------
             arrow_x0 = left_margin
             arrow_y0 = (lh - arrow_block_h) / 2.0
             arrow_x1 = arrow_x0 + arrow_block_w
             arrow_y1 = arrow_y0 + arrow_block_h
 
-            # Arrow ke relative points (simple house shape ↑)
             mid_x = (arrow_x0 + arrow_x1) / 2.0
-            head_height = arrow_block_h * 0.4
+            head_height = arrow_block_h * 0.45
             shaft_width = arrow_block_w * 0.35
 
             p = c.beginPath()
-            # bottom center of shaft
             p.moveTo(mid_x - shaft_width / 2, arrow_y0)
             p.lineTo(mid_x + shaft_width / 2, arrow_y0)
             p.lineTo(mid_x + shaft_width / 2, arrow_y0 + arrow_block_h - head_height)
             p.lineTo(arrow_x1, arrow_y0 + arrow_block_h - head_height)
-            p.lineTo(mid_x, arrow_y1)  # arrow tip
+            p.lineTo(mid_x, arrow_y1)
             p.lineTo(arrow_x0, arrow_y0 + arrow_block_h - head_height)
             p.lineTo(mid_x - shaft_width / 2, arrow_y0 + arrow_block_h - head_height)
             p.close()
 
-            orange = Color(1, 0.5, 0.2)   # thoda light orange
+            orange = Color(1, 0.55, 0.20)
             c.setFillColor(orange)
             c.setStrokeColor(orange)
             c.drawPath(p, stroke=1, fill=1)
 
-            # ---- Barcode size ----
-            bar_w = bar_area_w
+            # ------ Right side area (logo + barcode + text) ------
+            right_x0 = left_margin + arrow_block_w + gap
+            right_w = lw - right_x0 - right_margin
+
+            # --- Logo on top of barcode ---
+            logo_max_width = right_w * 0.35
+            logo_ratio = logo_img.height / logo_img.width
+            logo_w = logo_max_width
+            logo_h = logo_w * logo_ratio
+
+            logo_x = right_x0
+            logo_y = lh - logo_h - 8 * mm   # top se thoda niche
+
+            c.drawImage(
+                ImageReader(logo_buf),
+                logo_x,
+                logo_y,
+                width=logo_w,
+                height=logo_h,
+                mask="auto",
+            )
+
+            # --- Barcode just to the right of logo, aligned bottom of logo ---
+            bar_available_w = right_w - logo_w - 4 * mm
+            bar_w = bar_available_w
             bar_ratio = bar_img.height / bar_img.width
             bar_h = bar_w * bar_ratio
 
-            text_height = 10 * mm
-            max_bar_height = lh - 20 * mm - text_height
+            max_bar_height = logo_h  # barcode ki height ~ logo height
             if bar_h > max_bar_height:
                 scale = max_bar_height / bar_h
                 bar_w *= scale
                 bar_h *= scale
 
-            bar_x = bar_area_x
-            bar_y = (lh - bar_h) / 2.0 + text_height / 2.0
-
-            # ---- Draw barcode ----
-            bar_img_buf = io.BytesIO()
-            bar_img.save(bar_img_buf, format="PNG")
-            bar_img_buf.seek(0)
+            bar_x = logo_x + logo_w + 4 * mm
+            bar_y = logo_y   # top align with logo
 
             c.drawImage(
                 ImageReader(bar_img_buf),
@@ -110,13 +139,14 @@ if st.button("Generate Label"):
                 mask="auto",
             )
 
-            # ---- Big text below barcode ----
+            # --- Big text under full right area ---
             c.setFillColor(black)
             c.setFont("Helvetica-Bold", 20)
-            text_y = bar_y - 6 * mm
-            text_x_center = bar_x + bar_w / 2.0
-            c.drawCentredString(text_x_center, text_y, barcode_text)  # [web:24][web:26]
+            text_y = bar_y - 8 * mm
+            text_center_x = right_x0 + right_w / 2.0
+            c.drawCentredString(text_center_x, text_y, barcode_text)  # [web:24][web:26]
 
+            # --------- Finish ----------
             c.showPage()
             c.save()
             pdf_buffer.seek(0)
@@ -126,7 +156,7 @@ if st.button("Generate Label"):
             st.download_button(
                 label="Download Label PDF",
                 data=pdf_bytes,
-                file_name=f"arrow_label_{barcode_text}.pdf",
+                file_name=f"arrow_logo_barcode_{barcode_text}.pdf",
                 mime="application/pdf",
             )
 
