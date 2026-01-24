@@ -11,11 +11,9 @@ from barcode.writer import ImageWriter
 from urllib.request import urlopen
 
 # ===== PATH / LOGO SETTINGS =====
-# Path ko current file ke folder ke mutabiq set kiya gaya hai
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
 
-# GitHub URL ko bhi updated structure ke mutabiq set kiya gaya hai
 GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
@@ -68,10 +66,8 @@ st.markdown(
     .block-container { padding-top: 1.5rem; max-width: 1200px; }
     [data-testid="stSidebar"] { background: radial-gradient(circle at top, #111827 0, #020617 55%); border-right: 1px solid rgba(148,163,184,0.35); }
     .glass-card { background: rgba(15,23,42,0.85); border-radius: 14px; padding: 14px; border: 1px solid rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px); }
-    .section-title { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #9CA3AF; margin: 10px 0 5px 0; }
     .hero-title { font-size: 40px; font-weight: 800; background: linear-gradient(90deg,#FF6B35,#FACC15); -webkit-background-clip: text; color: transparent; }
     .hero-sub { font-size: 14px; color: #9CA3AF; }
-    .preview-card { background: radial-gradient(circle at top left,#0F172A 0,#020617 55%); border-radius: 18px; padding: 20px; border: 1px solid rgba(148,163,184,0.35); }
     </style>
     """,
     unsafe_allow_html=True,
@@ -86,7 +82,6 @@ with col_h1:
 # ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div style="color:white; font-weight:600;">Control Panel</div>', unsafe_allow_html=True)
     barcode_text = st.text_input("Location Code", value="W13-07-07-01-02")
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
@@ -103,7 +98,7 @@ with st.sidebar:
 # ===== PDF BUILDER =====
 def build_pdf():
     logo_img, logo_ir = load_logo()
-    if not logo_ir: raise ValueError("Logo not found in assets or GitHub.")
+    if not logo_ir: raise ValueError("Logo not found.")
 
     # Barcode setup
     bbuf = io.BytesIO()
@@ -118,59 +113,52 @@ def build_pdf():
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
     m = 3 * mm
 
-    # Left Box (Arrow)
-    lw_box, lh_box = lw * 0.26, lh - 2 * m
+    # Right Box (Main Container)
+    rx, rw, rh = m, lw - 2 * m, lh - 2 * m
     c.setLineWidth(1.2)
-    c.roundRect(m, m, lw_box, lh_box, 2.5 * mm)
-    c.setFillColor(HexColor("#DDDDDD"))
-    c.roundRect(m + 0.8 * mm, m + 0.8 * mm, lw_box - 1.6 * mm, lh_box - 1.6 * mm, 2.5 * mm, stroke=0, fill=1)
-    
-    # Arrow shape
-    mx, ty, by = m + lw_box / 2, m + lh_box - 2 * mm, m + 2 * mm
-    path = c.beginPath()
-    path.moveTo(mx - (lw_box * 0.19), by)
-    path.lineTo(mx + (lw_box * 0.19), by)
-    path.lineTo(mx + (lw_box * 0.19), by + lh_box * 0.5)
-    path.lineTo(m + lw_box * 0.95, by + lh_box * 0.5)
-    path.lineTo(mx, ty)
-    path.lineTo(m + lw_box * 0.05, by + lh_box * 0.5)
-    path.lineTo(mx - (lw_box * 0.19), by + lh_box * 0.5)
-    path.close()
-    c.setFillColor(black); c.drawPath(path, stroke=0, fill=1)
-
-    # Right Box
-    rx, rw, rh = m + lw_box + 1 * mm, lw - (m + lw_box + 1 * mm) - m, lh - 2 * m
+    c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # Barcode
-    bh = rh * 0.45; bw = rw * 0.9
+    # Barcode Placement (Top)
+    bh = rh * 0.45
+    bw = rw * 0.9
     c.drawImage(bar_ir, rx + (rw - bw) / 2, m + rh - bh - 4 * mm, width=bw, height=bh, mask="auto")
 
-    # Bottom Band (Logo + Text)
-    band_y = m + 3 * mm
-    band_h = (m + rh - bh - 4 * mm) - band_y - (underline_gap_mm * mm)
+    # Separator Line
+    line_y = m + rh - bh - 8 * mm
     c.setLineWidth(2)
-    c.line(rx + 3 * mm, band_y + band_h + underline_gap_mm * mm, rx + rw - 3 * mm, band_y + band_h + underline_gap_mm * mm)
+    c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
+
+    # Bottom Area (Logo + Text)
+    band_h = line_y - m - 3 * mm
     
-    # Logo placement
-    lh_logo = band_h * 0.8; lw_logo = lh_logo
+    # Logo placement (Left side of bottom band)
+    lh_logo = band_h * 0.85
+    lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio: lw_logo = lh_logo * ratio
     else: lh_logo = lw_logo / ratio
-    c.drawImage(logo_ir, rx + 4 * mm, band_y + (band_h - lh_logo) / 2, width=lw_logo, height=lh_logo, mask="auto")
+    
+    logo_x = rx + 6 * mm
+    logo_y = m + 3 * mm + (band_h - lh_logo) / 2
+    c.drawImage(logo_ir, logo_x, logo_y, width=lw_logo, height=lh_logo, mask="auto")
 
-    # Text placement
-    c.setFont("Helvetica-Bold", 40)
-    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 40)
-    max_tw = rw - lw_logo - 12 * mm
-    size = 40
+    # Text placement (Centered in remaining space)
+    text_start_x = logo_x + lw_logo + 4 * mm
+    max_tw = rx + rw - text_start_x - 6 * mm
+    
+    c.setFont("Helvetica-Bold", 45)
+    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 45)
+    size = 45
     while tw > max_tw and size > 10:
         size -= 2
         c.setFont("Helvetica-Bold", size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", size)
-    c.drawCentredString(rx + lw_logo + 8 * mm + max_tw / 2, band_y + band_h / 2 - size / 4, barcode_text)
+    
+    c.drawCentredString(text_start_x + max_tw / 2, m + 3 * mm + band_h / 2 - size / 4, barcode_text)
 
-    c.showPage(); c.save()
+    c.showPage()
+    c.save()
     pdf_buf.seek(0)
     return pdf_buf.getvalue()
 
