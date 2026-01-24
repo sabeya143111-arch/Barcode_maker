@@ -195,9 +195,9 @@ with st.sidebar:
     with c2:
         label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0)
 
-    # Text / Logo sliders HATA DIYE – sab fixed hoga
+    # Text + logo fixed, sirf gap control
     underline_gap_mm = st.slider(
-        "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=3.0, step=0.5
+        "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=2.0, step=0.5
     )
 
     st.markdown('<div class="section-title">Logo</div>', unsafe_allow_html=True)
@@ -226,8 +226,8 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# ===== FIXED VALUES (FONT, ETC.) =====
-FIXED_FONT_SIZE = 60  # yahi pe tweak karke exact sample jaisa fit kara sakte ho
+# ===== FIXED VALUES =====
+FIXED_FONT_SIZE = 70  # reference jaisa bada text
 
 
 def build_pdf(
@@ -397,7 +397,7 @@ def build_pdf(
     text_right_x = right_x + right_w - band_margin_x
     max_width = text_right_x - text_left_x
 
-    max_font_from_height = band_height * 0.80
+    max_font_from_height = band_height * 0.90
     size = min(FIXED_FONT_SIZE, int(max_font_from_height))
     while size > 8:
         w = c.stringWidth(barcode_text, base_font, size)
