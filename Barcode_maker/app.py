@@ -10,7 +10,7 @@ import barcode
 from barcode.writer import ImageWriter
 from urllib.request import urlopen
 
-# ================= PATHS =================
+# ================= LOGO PATH =================
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
 
@@ -23,7 +23,7 @@ _logo_cache = {}
 
 def load_logo():
     if "ir" in _logo_cache:
-        return _logo_cache["img"], _logo_cache["ir"]
+        return _logo_cache["ir"]
 
     try:
         if LOCAL_LOGO_PATH.exists():
@@ -36,43 +36,33 @@ def load_logo():
         img.save(buf, format="PNG")
         buf.seek(0)
         ir = ImageReader(buf)
-        _logo_cache["img"], _logo_cache["ir"] = img, ir
-        return img, ir
+        _logo_cache["ir"] = ir
+        return ir
     except:
-        return None, None
+        return None
 
 
 # ================= STREAMLIT =================
-st.set_page_config("Swag Label Maker", "🏷️", layout="wide")
-
-st.markdown(
-    """
-    <style>
-    .stApp { background:#020617; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.title("🏷️ Swag Warehouse Label Maker")
+st.set_page_config("Warehouse Label", "🏷️", layout="wide")
+st.title("🏷️ Warehouse Location Label")
 
 barcode_text = st.text_input("Location Code", "W13-07-07-01-02")
-download = st.button("⬇️ Generate PDF")
+generate = st.button("⬇️ Generate PDF")
 
 
-# ================= PDF BUILDER =================
+# ================= PDF =================
 def build_pdf():
-    logo_img, logo_ir = load_logo()
+    logo_ir = load_logo()
     if not logo_ir:
-        raise Exception("Logo missing")
+        raise Exception("Logo not found")
 
-    # Barcode
+    # Barcode image
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
     code128.render({
         "write_text": False,
         "dpi": 600,
-        "module_height": 22,
+        "module_height": 20,
         "module_width": 0.45,
     }).save(bbuf, format="PNG")
     bbuf.seek(0)
@@ -80,66 +70,79 @@ def build_pdf():
 
     # Canvas
     W, H = 210 * mm, 60 * mm
-    c = canvas.Canvas(io.BytesIO(), pagesize=(W, H))
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(W, H))
     m = 4 * mm
 
-    # ===== LEFT ARROW BOX =====
+    # ================= LEFT ARROW BOX =================
     left_w = W * 0.26
     box_h = H - 2 * m
 
     c.setLineWidth(1.4)
     c.roundRect(m, m, left_w, box_h, 3 * mm)
 
-    c.setFillColor(HexColor("#E5E5E5"))
+    c.setFillColor(HexColor("#E6E6E6"))
     c.roundRect(m + 1, m + 1, left_w - 2, box_h - 2, 3 * mm, stroke=0, fill=1)
 
+    # ---- SIMPLE ARROW (PHOTO MATCH) ----
     cx = m + left_w / 2
-    top = m + box_h - 3 * mm
-    bot = m + 3 * mm
+    arrow_bottom = m + 7 * mm
+    arrow_top = m + box_h - 7 * mm
 
-    p = c.beginPath()
-    p.moveTo(cx - 18 * mm, bot)
-    p.lineTo(cx + 18 * mm, bot)
-    p.lineTo(cx + 18 * mm, m + box_h * 0.52)
-    p.lineTo(m + left_w - 4 * mm, m + box_h * 0.52)
-    p.lineTo(cx, top)
-    p.lineTo(m + 4 * mm, m + box_h * 0.52)
-    p.lineTo(cx - 18 * mm, m + box_h * 0.52)
-    p.close()
+    stem_w = 14 * mm
+    stem_h = 22 * mm
 
     c.setFillColor(black)
+
+    # Stem
+    c.rect(
+        cx - stem_w / 2,
+        arrow_bottom,
+        stem_w,
+        stem_h,
+        stroke=0,
+        fill=1,
+    )
+
+    # Head
+    p = c.beginPath()
+    p.moveTo(cx - 26 * mm, arrow_bottom + stem_h)
+    p.lineTo(cx + 26 * mm, arrow_bottom + stem_h)
+    p.lineTo(cx, arrow_top)
+    p.close()
     c.drawPath(p, fill=1, stroke=0)
 
-    # ===== RIGHT BOX =====
+    # ================= RIGHT BOX =================
     rx = m + left_w + 2 * mm
     rw = W - rx - m
 
+    c.setLineWidth(1.4)
     c.roundRect(rx, m, rw, box_h, 3 * mm)
 
-    # Barcode
+    # Barcode (top)
     c.drawImage(
         bar_ir,
-        rx + 5 * mm,
-        m + box_h * 0.48,
-        width=rw - 10 * mm,
-        height=box_h * 0.42,
+        rx + 6 * mm,
+        m + box_h * 0.50,
+        width=rw - 12 * mm,
+        height=box_h * 0.40,
         mask="auto",
     )
 
-    # Separator
-    sep_y = m + box_h * 0.44
+    # Separator line
+    sep_y = m + box_h * 0.45
     c.setLineWidth(2)
-    c.line(rx + 4 * mm, sep_y, rx + rw - 4 * mm, sep_y)
+    c.line(rx + 5 * mm, sep_y, rx + rw - 5 * mm, sep_y)
 
-    # ===== BOTTOM BAND =====
-    band_y = m + 4 * mm
+    # ================= BOTTOM BAND =================
+    band_y = m + 5 * mm
     band_h = sep_y - band_y - 3 * mm
 
-    # Logo
-    logo_size = band_h * 0.95
+    # Logo (SMALL & FIXED)
+    logo_size = 13 * mm
     c.drawImage(
         logo_ir,
-        rx + 6 * mm,
+        rx + 8 * mm,
         band_y + (band_h - logo_size) / 2,
         logo_size,
         logo_size,
@@ -149,22 +152,26 @@ def build_pdf():
     # Text
     c.setFont("Helvetica-Bold", 38)
     c.drawString(
-        rx + 6 * mm + logo_size + 6 * mm,
+        rx + 8 * mm + logo_size + 6 * mm,
         band_y + band_h / 2 - 12,
         barcode_text,
     )
 
     c.showPage()
     c.save()
-    return c.getpdfdata()
+    buf.seek(0)
+    return buf.getvalue()
 
 
 # ================= OUTPUT =================
-if download:
-    pdf = build_pdf()
-    st.download_button(
-        "⬇️ Download Label PDF",
-        pdf,
-        f"{barcode_text}.pdf",
-        "application/pdf",
-    )
+if generate:
+    try:
+        pdf = build_pdf()
+        st.download_button(
+            "⬇️ Download PDF",
+            pdf,
+            f"{barcode_text}.pdf",
+            "application/pdf",
+        )
+    except Exception as e:
+        st.error(str(e))
