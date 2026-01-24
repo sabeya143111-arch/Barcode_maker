@@ -9,6 +9,7 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 from urllib.request import urlopen
+
 # ===== PATH / LOGO SETTINGS =====
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
@@ -16,13 +17,12 @@ GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
 )
+
 # ---- logo cache to prevent garbage collection ----
 _logo_cache = {}
 def load_logo():
-    """Pehle local logo, phir GitHub fallback; buffers ko cache mein rakhta hai."""
     if "img" in _logo_cache:
         return _logo_cache["img"], _logo_cache["ir"]
-    # 1) Local logo check
     try:
         if LOCAL_LOGO_PATH.exists():
             img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -34,7 +34,6 @@ def load_logo():
             return img, ir
     except Exception:
         pass
-    # 2) GitHub logo fallback
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -49,6 +48,7 @@ def load_logo():
         return img, ir
     except Exception:
         return None, None
+
 # ===== PAGE CONFIG + GLOBAL CSS =====
 st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
 st.markdown(
@@ -80,6 +80,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 # ===== HERO HEADER =====
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
@@ -88,6 +89,7 @@ with col_h1:
         '<div class="hero-sub">Premium warehouse labels • Odoo‑ready • High‑res PDFs</div>',
         unsafe_allow_html=True,
     )
+
 # ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
@@ -95,24 +97,25 @@ with st.sidebar:
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
     label_height_mm = c2.number_input("Height (mm)", value=60.0)
-    underline_gap_mm = st.slider("Gap (mm)", 1.0, 10.0, 2.0)
+    underline_gap_mm = st.slider("Underline Gap (mm)", 1.0, 10.0, 3.0)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
-    # NEW: Logo size controls (optional tuning)
     st.markdown("---")
     st.caption("Logo & Text Layout")
-    logo_width_percent = st.slider("Logo Width % of band", 30, 70, 60)
-    logo_height_percent = st.slider("Logo Height % of band", 70, 100, 95)
+    logo_width_percent = st.slider("Logo Width % of band", 10, 80, 30)
+    logo_height_percent = st.slider("Logo Height % of band", 30, 100, 75)
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
+
 # ===== PDF BUILDER =====
 def build_pdf():
     logo_img, logo_ir = load_logo()
     if not logo_ir:
         raise ValueError("Logo not found.")
+
     # Barcode setup
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
@@ -126,17 +129,20 @@ def build_pdf():
     ).save(bbuf, format="PNG")
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
+
     # Canvas setup
     lw, lh = label_width_mm * mm, label_height_mm * mm
     pdf_buf = io.BytesIO()
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
     m = 3 * mm
+
     # Left Box (Arrow Box)
     lw_left = lw * 0.26
     lh_left = lh - 2 * m
-    c.setLineWidth(1.2)
+    c.setLineWidth(1.0)
     c.setStrokeColor(black)
     c.roundRect(m, m, lw_left, lh_left, 2.5 * mm)
+
     # Fill arrow box background
     c.setFillColor(HexColor("#DDDDDD"))
     c.roundRect(
@@ -148,6 +154,7 @@ def build_pdf():
         stroke=0,
         fill=1,
     )
+
     # Arrow Shape
     mx = m + lw_left / 2
     ty = m + lh_left - 2 * mm
@@ -163,40 +170,40 @@ def build_pdf():
     path.close()
     c.setFillColor(black)
     c.drawPath(path, stroke=0, fill=1)
-    # Right Box
-    rx = m + lw_left + 1 * mm
+
+    # Right Box - connected (no gap)
+    rx = m + lw_left
     rw = lw - rx - m
     rh = lh - 2 * m
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
-    # Barcode Placement (Top of Right Box)
+
+    # Barcode Placement
     bh = rh * 0.50
     bw = rw * 0.92
+    barcode_y = m + rh - bh - 4 * mm
     c.drawImage(
         bar_ir,
         rx + (rw - bw) / 2,
-        m + rh - bh - 4 * mm,
+        barcode_y,
         width=bw,
         height=bh,
         mask="auto",
     )
-    # Separator Line (removed as upper line, will add as underline below)
-    # line_y = m + rh - bh - 8 * mm
-    # c.setLineWidth(2)
-    # c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
-    # Adjust band calculation without upper line
-    y_bar_bottom = m + rh - bh - 4 * mm
-    gap_after_bar = 4 * mm  # small gap between barcode and band top
-    line_y = y_bar_bottom - gap_after_bar  # virtual for band_h calc
-    band_h = line_y - m - 3 * mm
+
+    # Bottom band calculation (no separator line)
+    barcode_bottom_y = barcode_y
+    gap_after_bar = 2 * mm
+    virtual_line_y = barcode_bottom_y - gap_after_bar
+    band_h = virtual_line_y - m - 3 * mm
     band_y = m + 3 * mm
-    # Bottom Area (Logo + Text)
-    # ==== Bigger Logo + Adjusted Text ====
-    usable_width = rw - 8 * mm # inner padding
-    # Logo section (left) - controlled by slider
+
+    # Logo + Text in bottom band
+    usable_width = rw - 8 * mm
     logo_section_w = usable_width * (logo_width_percent / 100.0)
     logo_x = rx + 4 * mm
-    # Logo sizing inside band - aggressive but keeps aspect ratio
+
+    # Logo sizing (fill height percent, keep ratio, cap to section width)
     lh_logo = band_h * (logo_height_percent / 100.0)
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
@@ -204,6 +211,12 @@ def build_pdf():
         lw_logo = lh_logo * ratio
     else:
         lh_logo = lw_logo / ratio
+
+    # Cap to fit in allocated section
+    if lw_logo > logo_section_w:
+        lw_logo = logo_section_w
+        lh_logo = lw_logo / ratio
+
     logo_y = band_y + (band_h - lh_logo) / 2
     c.drawImage(
         logo_ir,
@@ -213,10 +226,12 @@ def build_pdf():
         height=lh_logo,
         mask="auto",
     )
-    # Text section (right)
-    text_start_x = logo_x + lw_logo + 2 * mm  # right next to logo, not using section_w for placement
+
+    # Text section
+    text_start_x = logo_x + logo_section_w + 2 * mm
     max_tw = rx + rw - text_start_x - 4 * mm
-    # Dynamic text size based on band height
+
+    # Dynamic text size
     text_size = int(band_h / 1.3)
     text_size = min(text_size, 60)
     text_size = max(text_size, 20)
@@ -226,17 +241,20 @@ def build_pdf():
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+
     text_y = band_y + band_h / 2 - text_size / 3
-    # Change to left-aligned
-    c.drawString(text_start_x, text_y, barcode_text)
-    # Add underline below text
-    c.setLineWidth(1)
-    underline_y = text_y - underline_gap_mm
+    c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
+
+    # Underline below text (full width of right box)
+    c.setLineWidth(1.0)
+    underline_y = text_y - underline_gap_mm * mm
     c.line(rx + 3 * mm, underline_y, rx + rw - 3 * mm, underline_y)
+
     c.showPage()
     c.save()
     pdf_buf.seek(0)
     return pdf_buf.getvalue()
+
 # ===== MAIN APP =====
 if preview_btn or download_btn:
     try:
