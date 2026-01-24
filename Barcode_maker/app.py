@@ -322,7 +322,7 @@ def build_pdf(
 
     # ---- BARCODE AREA (TOP) ----
     barcode_area_top = right_y + right_h - 4 * mm
-    barcode_area_bottom = right_y + right_h * 0.55  # niche ka band bada rakhne ke liye
+    barcode_area_bottom = right_y + right_h * 0.55
 
     barcode_area_h = barcode_area_top - barcode_area_bottom
     bar_w = right_w * 0.92
@@ -341,8 +341,8 @@ def build_pdf(
     )
 
     # ---- TEXT + LOGO BAND (BARCODE KE NICHE) ----
-    band_top_y = barcode_area_bottom - underline_gap_mm * mm   # upper line
-    band_bottom_y = right_y + 3 * mm                           # lower line
+    band_top_y = barcode_area_bottom - underline_gap_mm * mm
+    band_bottom_y = right_y + 3 * mm
     text_center_y = (band_top_y + band_bottom_y) / 2.0
 
     c.setLineWidth(2)
@@ -361,14 +361,15 @@ def build_pdf(
 
     band_height = band_top_y - band_bottom_y
 
-    # ---- LOGO BOX (LEFT, BAND KE ANDAR) ----
+    # ---- LOGO: SIRF IMAGE, KAAM SARA (BOX HATA DIYE) ----
     green_h = band_height * 0.80
     green_w = green_h
     green_x = right_x + 4 * mm
     green_y = band_bottom_y + (band_height - green_h) / 2.0
 
-    c.setLineWidth(1)
-    c.roundRect(green_x, green_y, green_w, green_h, 3 * mm)
+    # ❌ REMOVED: Logo ko surround karne wala roundRect box
+    # c.setLineWidth(1)
+    # c.roundRect(green_x, green_y, green_w, green_h, 3 * mm)
 
     if logo_img and logo_ir:
         logo_margin = 1.0 * mm
