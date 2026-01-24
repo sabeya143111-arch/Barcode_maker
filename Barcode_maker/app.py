@@ -98,12 +98,20 @@ with st.sidebar:
 # ===== PDF BUILDER =====
 def build_pdf():
     logo_img, logo_ir = load_logo()
-    if not logo_ir: raise ValueError("Logo not found.")
+    if not logo_ir:
+        raise ValueError("Logo not found.")
 
     # Barcode setup
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-    code128.render({"write_text": False, "dpi": dpi_value, "module_height": module_height, "module_width": module_width}).save(bbuf, format="PNG")
+    code128.render(
+        {
+            "write_text": False,
+            "dpi": dpi_value,
+            "module_height": module_height,
+            "module_width": module_width,
+        }
+    ).save(bbuf, format="PNG")
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
@@ -122,7 +130,15 @@ def build_pdf():
     
     # Fill arrow box background
     c.setFillColor(HexColor("#DDDDDD"))
-    c.roundRect(m + 0.8 * mm, m + 0.8 * mm, lw_left - 1.6 * mm, lh_left - 1.6 * mm, 2.5 * mm, stroke=0, fill=1)
+    c.roundRect(
+        m + 0.8 * mm,
+        m + 0.8 * mm,
+        lw_left - 1.6 * mm,
+        lh_left - 1.6 * mm,
+        2.5 * mm,
+        stroke=0,
+        fill=1,
+    )
     
     # Arrow Shape
     mx = m + lw_left / 2
@@ -150,7 +166,14 @@ def build_pdf():
     # Barcode Placement (Top of Right Box)
     bh = rh * 0.50
     bw = rw * 0.92
-    c.drawImage(bar_ir, rx + (rw - bw) / 2, m + rh - bh - 4 * mm, width=bw, height=bh, mask="auto")
+    c.drawImage(
+        bar_ir,
+        rx + (rw - bw) / 2,
+        m + rh - bh - 4 * mm,
+        width=bw,
+        height=bh,
+        mask="auto",
+    )
 
     # Separator Line
     line_y = m + rh - bh - 8 * mm
@@ -159,31 +182,54 @@ def build_pdf():
 
     # Bottom Area (Logo + Text)
     band_h = line_y - m - 3 * mm
-    
-    # Logo placement (Large logo on left side of bottom band)
-    lh_logo = band_h * 0.88
+    band_y = m + 3 * mm
+
+    # ==== Balanced layout: Logo + Text ====
+    usable_width = rw - 8 * mm  # inner padding
+
+    # Logo section (left)
+    logo_section_w = usable_width * 0.50
+    logo_x = rx + 4 * mm
+
+    # Logo sizing inside band
+    lh_logo = band_h * 0.85
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
-    if lw_logo / lh_logo > ratio: lw_logo = lh_logo * ratio
-    else: lh_logo = lw_logo / ratio
-    
-    logo_x = rx + 4 * mm
-    logo_y = m + 3 * mm + (band_h - lh_logo) / 2
-    c.drawImage(logo_ir, logo_x, logo_y, width=lw_logo, height=lh_logo, mask="auto")
 
-    # Text placement (Centered in remaining space of right box)
-    text_start_x = logo_x + lw_logo + 2 * mm
+    if lw_logo / lh_logo > ratio:
+        lw_logo = lh_logo * ratio
+    else:
+        lh_logo = lw_logo / ratio
+
+    logo_y = band_y + (band_h - lh_logo) / 2
+    c.drawImage(
+        logo_ir,
+        logo_x,
+        logo_y,
+        width=lw_logo,
+        height=lh_logo,
+        mask="auto",
+    )
+
+    # Text section (right)
+    text_start_x = rx + usable_width * 0.55
     max_tw = rx + rw - text_start_x - 4 * mm
-    
-    c.setFont("Helvetica-Bold", 60)
-    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 60)
-    size = 60
-    while tw > max_tw and size > 10:
-        size -= 2
-        c.setFont("Helvetica-Bold", size)
-        tw = c.stringWidth(barcode_text, "Helvetica-Bold", size)
-    
-    c.drawCentredString(text_start_x + max_tw / 2, m + 3 * mm + band_h / 2 - size / 4, barcode_text)
+
+    # Dynamic text size based on band height
+    text_size = int(band_h / 1.3)
+    text_size = min(text_size, 60)
+    text_size = max(text_size, 20)
+
+    c.setFont("Helvetica-Bold", text_size)
+    tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+
+    while tw > max_tw and text_size > 14:
+        text_size -= 2
+        c.setFont("Helvetica-Bold", text_size)
+        tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+
+    text_y = band_y + band_h / 2 - text_size / 3
+    c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
 
     c.showPage()
     c.save()
@@ -196,6 +242,12 @@ if preview_btn or download_btn:
         with st.spinner("Generating PDF..."):
             pdf_data = build_pdf()
         st.success("Success!")
-        st.download_button("Download PDF", data=pdf_data, file_name=f"{barcode_text}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(
+            "Download PDF",
+            data=pdf_data,
+            file_name=f"{barcode_text}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
     except Exception as e:
         st.error(f"Error: {e}")
