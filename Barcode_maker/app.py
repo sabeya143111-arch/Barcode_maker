@@ -97,14 +97,14 @@ with st.sidebar:
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
     label_height_mm = c2.number_input("Height (mm)", value=60.0)
-    logo_to_text_gap_mm = st.slider("Gap Logo ↔ Text (mm)", 2.0, 15.0, 6.0)
-    underline_gap_mm = st.slider("Underline gap below text (mm)", 0.5, 8.0, 2.0)
+    logo_to_text_gap_mm = st.slider("Gap Logo ↔ Text (mm)", 1.0, 20.0, 4.0)
+    underline_gap_mm = st.slider("Underline gap below text (mm)", 0.5, 8.0, 1.5)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
     st.markdown("---")
-    st.caption("Logo Size")
-    logo_height_percent = st.slider("Logo Height % of bottom band", 50, 100, 80)
+    st.caption("Logo Size (smaller % = smaller logo)")
+    logo_height_percent = st.slider("Logo Height % of bottom band", 15, 100, 30)
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
@@ -178,9 +178,9 @@ def build_pdf():
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # Barcode Placement
-    bh = rh * 0.50
-    barcode_top_gap = 5 * mm
+    # Barcode Placement - higher up to give more space to bottom
+    bh = rh * 0.45
+    barcode_top_gap = 2 * mm
     bw = rw * 0.92
     barcode_y = m + rh - bh - barcode_top_gap
     c.drawImage(
@@ -192,13 +192,13 @@ def build_pdf():
         mask="auto",
     )
 
-    # Bottom band calculation
-    gap_after_bar = 3 * mm
+    # Bottom band - larger now
+    gap_after_bar = 4 * mm
     band_top_y = barcode_y - gap_after_bar
     band_y = m + 3 * mm
     band_h = band_top_y - band_y
 
-    # Logo placement (keep aspect ratio, size by height %)
+    # Logo placement - small by default (30%)
     logo_x = rx + 4 * mm
     lh_logo = band_h * (logo_height_percent / 100.0)
     ratio = logo_img.width / logo_img.height
@@ -213,14 +213,14 @@ def build_pdf():
         mask="auto",
     )
 
-    # Text placement (centered in remaining space after logo)
+    # Text placement
     gap_logo_text = logo_to_text_gap_mm * mm
     text_start_x = logo_x + lw_logo + gap_logo_text
     max_tw = rx + rw - text_start_x - 4 * mm
 
-    # Dynamic text size (start larger for bigger text)
-    text_size = int(band_h / 1.15)
-    text_size = min(text_size, 70)
+    # Larger starting text size for bigger text
+    text_size = int(band_h / 1.0)
+    text_size = min(text_size, 80)
     text_size = max(text_size, 20)
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
@@ -229,11 +229,11 @@ def build_pdf():
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
-    text_y = band_y + band_h / 2 - text_size / 3   # baseline approx centered
+    text_y = band_y + band_h / 2 - text_size / 4   # better vertical centering
     c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
 
-    # Thin underline full width
-    c.setLineWidth(0.8)
+    # Thin underline close to text
+    c.setLineWidth(0.6)
     underline_y = text_y - underline_gap_mm * mm
     c.line(rx + 3 * mm, underline_y, rx + rw - 3 * mm, underline_y)
 
