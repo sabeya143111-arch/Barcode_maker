@@ -22,6 +22,7 @@ GITHUB_LOGO_URL = (
 # ---- logo cache to prevent garbage collection ----
 _logo_cache = {}
 
+
 def load_logo():
     """Pehle local logo, phir GitHub fallback; buffers ko cache mein rakhta hai."""
     if "img" in _logo_cache:
@@ -56,6 +57,7 @@ def load_logo():
     except Exception:
         return None, None
 
+
 # ===== PAGE CONFIG + GLOBAL CSS =====
 st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
 
@@ -64,9 +66,25 @@ st.markdown(
     <style>
     .stApp { background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%); }
     .block-container { padding-top: 1.5rem; max-width: 1200px; }
-    [data-testid="stSidebar"] { background: radial-gradient(circle at top, #111827 0, #020617 55%); border-right: 1px solid rgba(148,163,184,0.35); }
-    .glass-card { background: rgba(15,23,42,0.85); border-radius: 14px; padding: 14px; border: 1px solid rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px); }
-    .hero-title { font-size: 40px; font-weight: 800; background: linear-gradient(90deg,#FF6B35,#FACC15); -webkit-background-clip: text; color: transparent; }
+    [data-testid="stSidebar"] {
+        background: radial-gradient(circle at top, #111827 0, #020617 55%);
+        border-right: 1px solid rgba(148,163,184,0.35);
+    }
+    .glass-card {
+        background: rgba(15,23,42,0.85);
+        border-radius: 14px;
+        padding: 14px;
+        border: 1px solid rgba(148,163,184,0.35);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        backdrop-filter: blur(18px);
+    }
+    .hero-title {
+        font-size: 40px;
+        font-weight: 800;
+        background: linear-gradient(90deg,#FF6B35,#FACC15);
+        -webkit-background-clip: text;
+        color: transparent;
+    }
     .hero-sub { font-size: 14px; color: #9CA3AF; }
     </style>
     """,
@@ -77,23 +95,37 @@ st.markdown(
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown('<div class="hero-title">Swag Logo Maker</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-sub">Premium warehouse labels • Odoo‑ready • High‑res PDFs</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="hero-sub">Premium warehouse labels • Odoo‑ready • High‑res PDFs</div>',
+        unsafe_allow_html=True,
+    )
 
 # ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+
     barcode_text = st.text_input("Location Code", value="W13-07-07-01-02")
+
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
     label_height_mm = c2.number_input("Height (mm)", value=60.0)
+
     underline_gap_mm = st.slider("Gap (mm)", 1.0, 10.0, 2.0)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
+
+    # NEW: Logo size controls (optional tuning)
+    st.markdown("---")
+    st.caption("Logo & Text Layout")
+    logo_width_percent = st.slider("Logo Width % of band", 30, 70, 60)
+    logo_height_percent = st.slider("Logo Height % of band", 70, 100, 95)
+
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ===== PDF BUILDER =====
 def build_pdf():
@@ -127,7 +159,7 @@ def build_pdf():
     c.setLineWidth(1.2)
     c.setStrokeColor(black)
     c.roundRect(m, m, lw_left, lh_left, 2.5 * mm)
-    
+
     # Fill arrow box background
     c.setFillColor(HexColor("#DDDDDD"))
     c.roundRect(
@@ -139,7 +171,7 @@ def build_pdf():
         stroke=0,
         fill=1,
     )
-    
+
     # Arrow Shape
     mx = m + lw_left / 2
     ty = m + lh_left - 2 * mm
@@ -184,15 +216,15 @@ def build_pdf():
     band_h = line_y - m - 3 * mm
     band_y = m + 3 * mm
 
-    # ==== Balanced layout: Logo + Text ====
+    # ==== Bigger Logo + Adjusted Text ====
     usable_width = rw - 8 * mm  # inner padding
 
-    # Logo section (left)
-    logo_section_w = usable_width * 0.50
+    # Logo section (left) - controlled by slider
+    logo_section_w = usable_width * (logo_width_percent / 100.0)
     logo_x = rx + 4 * mm
 
-    # Logo sizing inside band
-    lh_logo = band_h * 0.85
+    # Logo sizing inside band - aggressive but keeps aspect ratio
+    lh_logo = band_h * (logo_height_percent / 100.0)
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
 
@@ -212,7 +244,7 @@ def build_pdf():
     )
 
     # Text section (right)
-    text_start_x = rx + usable_width * 0.55
+    text_start_x = logo_x + logo_section_w + 2 * mm
     max_tw = rx + rw - text_start_x - 4 * mm
 
     # Dynamic text size based on band height
@@ -235,6 +267,7 @@ def build_pdf():
     c.save()
     pdf_buf.seek(0)
     return pdf_buf.getvalue()
+
 
 # ===== MAIN APP =====
 if preview_btn or download_btn:
