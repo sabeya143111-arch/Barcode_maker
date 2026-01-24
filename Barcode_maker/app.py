@@ -195,18 +195,12 @@ with st.sidebar:
     with c2:
         label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0)
 
-    st.markdown('<div class="section-title">Text</div>', unsafe_allow_html=True)
-    text_font_size = st.slider(
-        "Font size", min_value=16, max_value=90, value=60, step=1
-    )
+    # Text / Logo sliders HATA DIYE – sab fixed hoga
     underline_gap_mm = st.slider(
         "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=3.0, step=0.5
     )
 
     st.markdown('<div class="section-title">Logo</div>', unsafe_allow_html=True)
-    logo_scale = st.slider(
-        "Logo size (%)", min_value=20, max_value=80, value=45, step=5
-    )
     uploaded_logo = st.file_uploader(
         "Custom logo (PNG/JPG)", type=["png", "jpg", "jpeg"]
     )
@@ -230,6 +224,10 @@ with st.sidebar:
     preview_btn = st.button("👀 Live preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ===== FIXED VALUES (FONT, ETC.) =====
+FIXED_FONT_SIZE = 60  # yahi pe tweak karke exact sample jaisa fit kara sakte ho
 
 
 def build_pdf(
@@ -361,15 +359,11 @@ def build_pdf(
 
     band_height = band_top_y - band_bottom_y
 
-    # ---- LOGO: SIRF IMAGE, KAAM SARA (BOX HATA DIYE) ----
+    # ---- LOGO: sirf image, box nahi ----
     green_h = band_height * 0.80
     green_w = green_h
     green_x = right_x + 4 * mm
     green_y = band_bottom_y + (band_height - green_h) / 2.0
-
-    # ❌ REMOVED: Logo ko surround karne wala roundRect box
-    # c.setLineWidth(1)
-    # c.roundRect(green_x, green_y, green_w, green_h, 3 * mm)
 
     if logo_img and logo_ir:
         logo_margin = 1.0 * mm
@@ -394,7 +388,7 @@ def build_pdf(
             mask="auto",
         )
 
-    # ---- TEXT (LOGO KE RIGHT) ----
+    # ---- TEXT (LOGO KE RIGHT) – fixed font auto‑fit ----
     c.setFillColor(black)
     base_font = "Helvetica-Bold"
 
@@ -404,7 +398,7 @@ def build_pdf(
     max_width = text_right_x - text_left_x
 
     max_font_from_height = band_height * 0.80
-    size = min(text_font_size, int(max_font_from_height))
+    size = min(FIXED_FONT_SIZE, int(max_font_from_height))
     while size > 8:
         w = c.stringWidth(barcode_text, base_font, size)
         if w <= max_width:
@@ -487,8 +481,6 @@ with col_info:
     )
     st.write(f"Code: **{barcode_text}**")
     st.write(f"Size: **{label_width_mm} mm × {label_height_mm} mm**")
-    st.write(f"Font size: **{text_font_size} pt**")
-    st.write(f"Logo scale: **{logo_scale}%**")
     st.write(f"Barcode DPI: **{dpi_value}**")
     st.write(f"Module (h × w): **{module_height} × {module_width}**")
     st.markdown("</div>", unsafe_allow_html=True)
