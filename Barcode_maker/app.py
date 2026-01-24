@@ -19,8 +19,16 @@ GITHUB_LOGO_URL = (
     "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
 )
 
+# ---- simple cache so buffer memory free na ho ----
+_logo_cache = {}
+
+
 def load_logo():
     """Pehle local logo, phir GitHub; agar dono fail, None."""
+    # cache hit
+    if "img" in _logo_cache:
+        return _logo_cache["img"], _logo_cache["ir"]
+
     # 1) Local logo
     try:
         if LOCAL_LOGO_PATH.exists():
@@ -28,9 +36,14 @@ def load_logo():
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             buf.seek(0)
-            return img, ImageReader(buf)
-    except Exception:
-        pass
+
+            ir = ImageReader(buf)
+            _logo_cache["img"] = img
+            _logo_cache["ir"] = ir
+            _logo_cache["buf"] = buf  # reference hold karo
+            return img, ir
+    except Exception as e:
+        print("Local logo error:", e)
 
     # 2) GitHub logo fallback
     try:
@@ -39,11 +52,18 @@ def load_logo():
         buf = io.BytesIO(data)
         buf.seek(0)
         img = Image.open(buf).convert("RGBA")
+
         buf2 = io.BytesIO()
         img.save(buf2, format="PNG")
         buf2.seek(0)
-        return img, ImageReader(buf2)
-    except Exception:
+
+        ir = ImageReader(buf2)
+        _logo_cache["img"] = img
+        _logo_cache["ir"] = ir
+        _logo_cache["buf"] = buf2
+        return img, ir
+    except Exception as e:
+        print("GitHub logo error:", e)
         return None, None
 
 
@@ -210,6 +230,7 @@ with st.sidebar:
 # ===== FIXED TEXT SIZE =====
 FIXED_FONT_SIZE = 66
 
+
 def build_pdf(
     module_h: int = 18,
     module_w: float = 0.45,
@@ -221,7 +242,6 @@ def build_pdf(
     # ---------- LOGO (FIXED) ----------
     logo_img, logo_ir = load_logo()
     if not logo_img or not logo_ir:
-        # Agar yahan error aa gaya to samajh lo logo file hi issue hai
         raise ValueError("Logo load nahi ho raha — assets/logo.png check karo.")
 
     # ---------- BARCODE ----------
@@ -348,9 +368,9 @@ def build_pdf(
     green_x = right_x + 4 * mm
     green_y = band_bottom_y + (band_height - green_h) / 2.0
 
-    # Debug outline (ek baar test ke liye rakho; baad me hata sakte ho)
-    c.setStrokeColor(black)
-    c.rect(green_x, green_y, green_w, green_h, stroke=1, fill=0)
+    # Optional debug outline
+    # c.setStrokeColor(black)
+    # c.rect(green_x, green_y, green_w, green_h, stroke=1, fill=0)
 
     logo_margin = 1.0 * mm
     logo_w = green_w - 2 * logo_margin
@@ -400,6 +420,7 @@ def build_pdf(
     pdf_buffer.seek(0)
 
     return pdf_buffer.getvalue()
+
 
 # ===== MAIN AREA =====
 col_preview, col_info = st.columns([3, 1])
