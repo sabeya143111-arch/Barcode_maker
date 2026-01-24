@@ -113,15 +113,43 @@ def build_pdf():
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
     m = 3 * mm
 
-    # Right Box (Main Container)
-    rx, rw, rh = m, lw - 2 * m, lh - 2 * m
+    # Left Box (Arrow Box)
+    lw_left = lw * 0.26
+    lh_left = lh - 2 * m
     c.setLineWidth(1.2)
+    c.setStrokeColor(black)
+    c.roundRect(m, m, lw_left, lh_left, 2.5 * mm)
+    
+    # Fill arrow box background
+    c.setFillColor(HexColor("#DDDDDD"))
+    c.roundRect(m + 0.8 * mm, m + 0.8 * mm, lw_left - 1.6 * mm, lh_left - 1.6 * mm, 2.5 * mm, stroke=0, fill=1)
+    
+    # Arrow Shape
+    mx = m + lw_left / 2
+    ty = m + lh_left - 2 * mm
+    by = m + 2 * mm
+    path = c.beginPath()
+    path.moveTo(mx - (lw_left * 0.19), by)
+    path.lineTo(mx + (lw_left * 0.19), by)
+    path.lineTo(mx + (lw_left * 0.19), by + lh_left * 0.5)
+    path.lineTo(m + lw_left * 0.95, by + lh_left * 0.5)
+    path.lineTo(mx, ty)
+    path.lineTo(m + lw_left * 0.05, by + lh_left * 0.5)
+    path.lineTo(mx - (lw_left * 0.19), by + lh_left * 0.5)
+    path.close()
+    c.setFillColor(black)
+    c.drawPath(path, stroke=0, fill=1)
+
+    # Right Box
+    rx = m + lw_left + 1 * mm
+    rw = lw - rx - m
+    rh = lh - 2 * m
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # Barcode Placement (Top)
-    bh = rh * 0.45
-    bw = rw * 0.9
+    # Barcode Placement (Top of Right Box)
+    bh = rh * 0.50
+    bw = rw * 0.92
     c.drawImage(bar_ir, rx + (rw - bw) / 2, m + rh - bh - 4 * mm, width=bw, height=bh, mask="auto")
 
     # Separator Line
@@ -132,24 +160,24 @@ def build_pdf():
     # Bottom Area (Logo + Text)
     band_h = line_y - m - 3 * mm
     
-    # Logo placement (Left side of bottom band)
-    lh_logo = band_h * 0.85
+    # Logo placement (Large logo on left side of bottom band)
+    lh_logo = band_h * 0.88
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio: lw_logo = lh_logo * ratio
     else: lh_logo = lw_logo / ratio
     
-    logo_x = rx + 6 * mm
+    logo_x = rx + 4 * mm
     logo_y = m + 3 * mm + (band_h - lh_logo) / 2
     c.drawImage(logo_ir, logo_x, logo_y, width=lw_logo, height=lh_logo, mask="auto")
 
-    # Text placement (Centered in remaining space)
-    text_start_x = logo_x + lw_logo + 4 * mm
-    max_tw = rx + rw - text_start_x - 6 * mm
+    # Text placement (Centered in remaining space of right box)
+    text_start_x = logo_x + lw_logo + 2 * mm
+    max_tw = rx + rw - text_start_x - 4 * mm
     
-    c.setFont("Helvetica-Bold", 45)
-    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 45)
-    size = 45
+    c.setFont("Helvetica-Bold", 60)
+    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 60)
+    size = 60
     while tw > max_tw and size > 10:
         size -= 2
         c.setFont("Helvetica-Bold", size)
