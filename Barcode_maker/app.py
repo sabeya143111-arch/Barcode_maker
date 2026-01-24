@@ -195,7 +195,6 @@ with st.sidebar:
     with c2:
         label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0)
 
-    # Text + logo fixed, sirf gap control
     underline_gap_mm = st.slider(
         "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=2.0, step=0.5
     )
@@ -227,7 +226,7 @@ with st.sidebar:
 
 
 # ===== FIXED VALUES =====
-FIXED_FONT_SIZE = 70  # reference jaisa bada text
+FIXED_FONT_SIZE = 66  # text ka base size – zarurat ho to 65–68 me tweak kar sakte ho
 
 
 def build_pdf(
@@ -341,7 +340,7 @@ def build_pdf(
     # ---- TEXT + LOGO BAND (BARCODE KE NICHE) ----
     band_top_y = barcode_area_bottom - underline_gap_mm * mm
     band_bottom_y = right_y + 3 * mm
-    text_center_y = (band_top_y + band_bottom_y) / 2.0
+    text_center_y = (band_top_y + band_bottom_y) / 2.0 + 0.6 * mm  # thoda upar feel
 
     c.setLineWidth(2)
     c.line(
@@ -397,7 +396,7 @@ def build_pdf(
     text_right_x = right_x + right_w - band_margin_x
     max_width = text_right_x - text_left_x
 
-    max_font_from_height = band_height * 0.90
+    max_font_from_height = band_height * 0.95
     size = min(FIXED_FONT_SIZE, int(max_font_from_height))
     while size > 8:
         w = c.stringWidth(barcode_text, base_font, size)
