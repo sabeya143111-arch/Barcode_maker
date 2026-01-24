@@ -11,39 +11,36 @@ from barcode.writer import ImageWriter
 from urllib.request import urlopen
 
 # ===== PATH / LOGO SETTINGS =====
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Path ko current file ke folder ke mutabiq set kiya gaya hai
+BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
 
+# GitHub URL ko bhi updated structure ke mutabiq set kiya gaya hai
 GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
-    "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
+    "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
 )
 
-# ---- simple cache so buffer memory free na ho ----
+# ---- logo cache to prevent garbage collection ----
 _logo_cache = {}
 
-
 def load_logo():
-    """Pehle local logo, phir GitHub; agar dono fail, None."""
-    # cache hit
+    """Pehle local logo, phir GitHub fallback; buffers ko cache mein rakhta hai."""
     if "img" in _logo_cache:
         return _logo_cache["img"], _logo_cache["ir"]
 
-    # 1) Local logo
+    # 1) Local logo check
     try:
         if LOCAL_LOGO_PATH.exists():
             img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             buf.seek(0)
-
             ir = ImageReader(buf)
-            _logo_cache["img"] = img
-            _logo_cache["ir"] = ir
-            _logo_cache["buf"] = buf  # reference hold karo
+            _logo_cache["img"], _logo_cache["ir"], _logo_cache["buf"] = img, ir, buf
             return img, ir
-    except Exception as e:
-        print("Local logo error:", e)
+    except Exception:
+        pass
 
     # 2) GitHub logo fallback
     try:
@@ -52,20 +49,14 @@ def load_logo():
         buf = io.BytesIO(data)
         buf.seek(0)
         img = Image.open(buf).convert("RGBA")
-
         buf2 = io.BytesIO()
         img.save(buf2, format="PNG")
         buf2.seek(0)
-
         ir = ImageReader(buf2)
-        _logo_cache["img"] = img
-        _logo_cache["ir"] = ir
-        _logo_cache["buf"] = buf2
+        _logo_cache["img"], _logo_cache["ir"], _logo_cache["buf"] = img, ir, buf2
         return img, ir
-    except Exception as e:
-        print("GitHub logo error:", e)
+    except Exception:
         return None, None
-
 
 # ===== PAGE CONFIG + GLOBAL CSS =====
 st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
@@ -73,420 +64,122 @@ st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wi
 st.markdown(
     """
     <style>
-    .stApp {
-        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
-    }
-
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 1.5rem;
-        max-width: 1200px;
-    }
-
-    [data-testid="stSidebar"] {
-        background: radial-gradient(circle at top, #111827 0, #020617 55%);
-        border-right: 1px solid rgba(148,163,184,0.35);
-    }
-
-    .glass-card {
-        background: rgba(15,23,42,0.85);
-        border-radius: 14px;
-        padding: 14px 14px 6px 14px;
-        border: 1px solid rgba(148,163,184,0.35);
-        box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-        backdrop-filter: blur(18px);
-    }
-
-    .section-title {
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #9CA3AF;
-        margin: 4px 0 6px 0;
-    }
-
-    .hero-title {
-        font-size: 40px;
-        font-weight: 800;
-        background: linear-gradient(90deg,#FF6B35,#FACC15);
-        -webkit-background-clip: text;
-        color: transparent;
-        margin-bottom: 4px;
-    }
-
-    .hero-sub {
-        font-size: 14px;
-        color: #9CA3AF;
-    }
-
-    .preview-card {
-        background: radial-gradient(circle at top left,#0F172A 0,#020617 55%);
-        border-radius: 18px;
-        padding: 18px;
-        border: 1px solid rgba(148,163,184,0.35);
-    }
-
-    .preview-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #E5E7EB;
-        margin-bottom: 6px;
-    }
-
-    .preview-sub {
-        font-size: 13px;
-        color: #9CA3AF;
-        margin-bottom: 10px;
-    }
-
-    .settings-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #E5E7EB;
-        margin-bottom: 6px;
-    }
-
-    .settings-sub {
-        font-size: 12px;
-        color: #9CA3AF;
-        margin-bottom: 12px;
-    }
+    .stApp { background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%); }
+    .block-container { padding-top: 1.5rem; max-width: 1200px; }
+    [data-testid="stSidebar"] { background: radial-gradient(circle at top, #111827 0, #020617 55%); border-right: 1px solid rgba(148,163,184,0.35); }
+    .glass-card { background: rgba(15,23,42,0.85); border-radius: 14px; padding: 14px; border: 1px solid rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px); }
+    .section-title { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #9CA3AF; margin: 10px 0 5px 0; }
+    .hero-title { font-size: 40px; font-weight: 800; background: linear-gradient(90deg,#FF6B35,#FACC15); -webkit-background-clip: text; color: transparent; }
+    .hero-sub { font-size: 14px; color: #9CA3AF; }
+    .preview-card { background: radial-gradient(circle at top left,#0F172A 0,#020617 55%); border-radius: 18px; padding: 20px; border: 1px solid rgba(148,163,184,0.35); }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ===== HERO HEADER =====
-with st.container():
-    col_h1, col_h2 = st.columns([3, 1])
-    with col_h1:
-        st.markdown('<div class="hero-title">Swag Logo Maker</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="hero-sub">'
-            'Premium warehouse labels • Odoo‑ready • High‑resolution PDFs'
-            "</div>",
-            unsafe_allow_html=True,
-        )
-    with col_h2:
-        st.markdown(
-            """
-            <div style="text-align:right; margin-top:4px;">
-                <span style="font-size:12px; color:#9CA3AF;">
-                    Powered by Streamlit • ReportLab • python-barcode
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+col_h1, col_h2 = st.columns([3, 1])
+with col_h1:
+    st.markdown('<div class="hero-title">Swag Logo Maker</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-sub">Premium warehouse labels • Odoo‑ready • High‑res PDFs</div>', unsafe_allow_html=True)
 
-st.markdown("")
-
-# ===== SIDEBAR INPUTS =====
+# ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="settings-title">Control panel</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="settings-sub">Tune your label layout, logo and barcode exactly the way warehouse needs.</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown('<div class="section-title">Location code</div>', unsafe_allow_html=True)
-    barcode_text = st.text_input(
-        "Location Code (e.g. W13-07-07-01-02)",
-        value="W13-07-07-01-02",
-    )
-
-    st.markdown('<div class="section-title">Label size</div>', unsafe_allow_html=True)
+    st.markdown('<div style="color:white; font-weight:600;">Control Panel</div>', unsafe_allow_html=True)
+    barcode_text = st.text_input("Location Code", value="W13-07-07-01-02")
     c1, c2 = st.columns(2)
-    with c1:
-        label_width_mm = st.number_input("Width (mm)", value=210.0, min_value=20.0)
-    with c2:
-        label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0)
-
-    underline_gap_mm = st.slider(
-        "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=2.0, step=0.5
-    )
-
-    st.markdown('<div class="section-title">Barcode</div>', unsafe_allow_html=True)
-    module_height = st.slider(
-        "Height", min_value=5, max_value=40, value=18, step=1
-    )
-    module_width = st.slider(
-        "Thickness",
-        min_value=0.2,
-        max_value=1.0,
-        value=0.45,
-        step=0.05,
-    )
-    dpi_value = st.slider(
-        "DPI", min_value=300, max_value=1200, value=600, step=100
-    )
-
+    label_width_mm = c1.number_input("Width (mm)", value=210.0)
+    label_height_mm = c2.number_input("Height (mm)", value=60.0)
+    underline_gap_mm = st.slider("Gap (mm)", 1.0, 10.0, 2.0)
+    module_height = st.slider("Bar Height", 5, 40, 18)
+    module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
+    dpi_value = st.slider("DPI", 300, 1200, 600, 100)
     st.markdown("---")
-    preview_btn = st.button("👀 Live preview")
+    preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ===== FIXED TEXT SIZE =====
-FIXED_FONT_SIZE = 66
-
-
-def build_pdf(
-    module_h: int = 18,
-    module_w: float = 0.45,
-    dpi: int = 600,
-):
-    if not barcode_text.strip():
-        raise ValueError("Code likho.")
-
-    # ---------- LOGO (FIXED) ----------
+# ===== PDF BUILDER =====
+def build_pdf():
     logo_img, logo_ir = load_logo()
-    if not logo_img or not logo_ir:
-        raise ValueError("Logo load nahi ho raha — assets/logo.png check karo.")
+    if not logo_ir: raise ValueError("Logo not found in assets or GitHub.")
 
-    # ---------- BARCODE ----------
+    # Barcode setup
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-    writer_opts = {
-        "write_text": False,
-        "dpi": dpi,
-        "module_height": module_h,
-        "module_width": module_w,
-    }
-    code128.render(writer_opts).save(bbuf, format="PNG")
+    code128.render({"write_text": False, "dpi": dpi_value, "module_height": module_height, "module_width": module_width}).save(bbuf, format="PNG")
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
-    # ---------- CANVAS / PAGE SIZE ----------
-    lw = float(label_width_mm) * mm
-    lh = float(label_height_mm) * mm
+    # Canvas setup
+    lw, lh = label_width_mm * mm, label_height_mm * mm
+    pdf_buf = io.BytesIO()
+    c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
+    m = 3 * mm
 
-    pdf_buffer = io.BytesIO()
-    c = canvas.Canvas(pdf_buffer, pagesize=(lw, lh))
-
-    margin = 3 * mm
-
-    # ===== LEFT: ARROW BOX =====
-    left_w = lw * 0.26
-    left_h = lh - 2 * margin
-    left_x = margin
-    left_y = margin
-
+    # Left Box (Arrow)
+    lw_box, lh_box = lw * 0.26, lh - 2 * m
     c.setLineWidth(1.2)
-    radius = 2.5 * mm
+    c.roundRect(m, m, lw_box, lh_box, 2.5 * mm)
+    c.setFillColor(HexColor("#DDDDDD"))
+    c.roundRect(m + 0.8 * mm, m + 0.8 * mm, lw_box - 1.6 * mm, lh_box - 1.6 * mm, 2.5 * mm, stroke=0, fill=1)
+    
+    # Arrow shape
+    mx, ty, by = m + lw_box / 2, m + lh_box - 2 * mm, m + 2 * mm
+    path = c.beginPath()
+    path.moveTo(mx - (lw_box * 0.19), by)
+    path.lineTo(mx + (lw_box * 0.19), by)
+    path.lineTo(mx + (lw_box * 0.19), by + lh_box * 0.5)
+    path.lineTo(m + lw_box * 0.95, by + lh_box * 0.5)
+    path.lineTo(mx, ty)
+    path.lineTo(m + lw_box * 0.05, by + lh_box * 0.5)
+    path.lineTo(mx - (lw_box * 0.19), by + lh_box * 0.5)
+    path.close()
+    c.setFillColor(black); c.drawPath(path, stroke=0, fill=1)
 
-    c.setStrokeColor(black)
-    c.roundRect(left_x, left_y, left_w, left_h, radius)
+    # Right Box
+    rx, rw, rh = m + lw_box + 1 * mm, lw - (m + lw_box + 1 * mm) - m, lh - 2 * m
+    c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    bg_grey = HexColor("#DDDDDD")
-    c.setFillColor(bg_grey)
-    c.roundRect(
-        left_x + 0.8 * mm,
-        left_y + 0.8 * mm,
-        left_w - 1.6 * mm,
-        left_h - 1.6 * mm,
-        radius,
-        stroke=0,
-        fill=1,
-    )
+    # Barcode
+    bh = rh * 0.45; bw = rw * 0.9
+    c.drawImage(bar_ir, rx + (rw - bw) / 2, m + rh - bh - 4 * mm, width=bw, height=bh, mask="auto")
 
-    mid_x = left_x + left_w / 2.0
-    top_y = left_y + left_h - 2.0 * mm
-    bottom_y = left_y + 2.0 * mm
-
-    head_h = left_h * 0.50
-    shaft_w = left_w * 0.38
-
-    p = c.beginPath()
-    p.moveTo(mid_x - shaft_w / 2, bottom_y)
-    p.lineTo(mid_x + shaft_w / 2, bottom_y)
-    p.lineTo(mid_x + shaft_w / 2, bottom_y + (left_h - head_h))
-    p.lineTo(left_x + left_w * 0.95, bottom_y + left_h - head_h)
-    p.lineTo(mid_x, top_y)
-    p.lineTo(left_x + left_w * 0.05, bottom_y + left_h - head_h)
-    p.lineTo(mid_x - shaft_w / 2, bottom_y + (left_h - head_h))
-    p.close()
-
-    c.setFillColor(black)
-    c.drawPath(p, stroke=0, fill=1)
-
-    # ===== RIGHT: BARCODE UPAR, NICHE LOGO + TEXT =====
-    right_x = left_x + left_w + 1 * mm
-    right_w = lw - right_x - margin
-    right_y = margin
-    right_h = lh - 2 * margin
-
-    c.setLineWidth(1.2)
-    c.setStrokeColor(black)
-    c.roundRect(right_x, right_y, right_w, right_h, 3 * mm)
-    center_x = right_x + right_w / 2.0
-
-    # ---- BARCODE AREA (TOP) ----
-    barcode_area_top = right_y + right_h - 4 * mm
-    barcode_area_bottom = right_y + right_h * 0.55
-
-    barcode_area_h = barcode_area_top - barcode_area_bottom
-    bar_w = right_w * 0.92
-    bar_h = barcode_area_h * 0.90
-
-    bar_x = center_x - bar_w / 2.0
-    bar_y = barcode_area_bottom + (barcode_area_h - bar_h) / 2.0
-
-    c.drawImage(
-        bar_ir,
-        bar_x,
-        bar_y,
-        width=bar_w,
-        height=bar_h,
-        mask="auto",
-    )
-
-    # ---- TEXT + LOGO BAND (BARCODE KE NICHE) ----
-    band_top_y = barcode_area_bottom - underline_gap_mm * mm
-    band_bottom_y = right_y + 3 * mm
-    text_center_y = (band_top_y + band_bottom_y) / 2.0 + 0.6 * mm
-
+    # Bottom Band (Logo + Text)
+    band_y = m + 3 * mm
+    band_h = (m + rh - bh - 4 * mm) - band_y - (underline_gap_mm * mm)
     c.setLineWidth(2)
-    c.line(
-        right_x + 3 * mm,
-        band_top_y,
-        right_x + right_w - 3 * mm,
-        band_top_y,
-    )
-    c.line(
-        right_x + 3 * mm,
-        band_bottom_y,
-        right_x + right_w - 3 * mm,
-        band_bottom_y,
-    )
-
-    band_height = band_top_y - band_bottom_y
-
-    # ---- LOGO: sirf image, box nahi ----
-    green_h = band_height * 0.80
-    green_w = green_h
-    green_x = right_x + 4 * mm
-    green_y = band_bottom_y + (band_height - green_h) / 2.0
-
-    # Optional debug outline
-    # c.setStrokeColor(black)
-    # c.rect(green_x, green_y, green_w, green_h, stroke=1, fill=0)
-
-    logo_margin = 1.0 * mm
-    logo_w = green_w - 2 * logo_margin
-    logo_h = green_h - 2 * logo_margin
-
+    c.line(rx + 3 * mm, band_y + band_h + underline_gap_mm * mm, rx + rw - 3 * mm, band_y + band_h + underline_gap_mm * mm)
+    
+    # Logo placement
+    lh_logo = band_h * 0.8; lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
-    if logo_w / logo_h > ratio:
-        logo_w = logo_h * ratio
-    else:
-        logo_h = logo_w / ratio
+    if lw_logo / lh_logo > ratio: lw_logo = lh_logo * ratio
+    else: lh_logo = lw_logo / ratio
+    c.drawImage(logo_ir, rx + 4 * mm, band_y + (band_h - lh_logo) / 2, width=lw_logo, height=lh_logo, mask="auto")
 
-    lx = green_x + (green_w - logo_w) / 2.0
-    ly = green_y + (green_h - logo_h) / 2.0
+    # Text placement
+    c.setFont("Helvetica-Bold", 40)
+    tw = c.stringWidth(barcode_text, "Helvetica-Bold", 40)
+    max_tw = rw - lw_logo - 12 * mm
+    size = 40
+    while tw > max_tw and size > 10:
+        size -= 2
+        c.setFont("Helvetica-Bold", size)
+        tw = c.stringWidth(barcode_text, "Helvetica-Bold", size)
+    c.drawCentredString(rx + lw_logo + 8 * mm + max_tw / 2, band_y + band_h / 2 - size / 4, barcode_text)
 
-    c.drawImage(
-        logo_ir,
-        lx,
-        ly,
-        width=logo_w,
-        height=logo_h,
-        mask="auto",
-    )
+    c.showPage(); c.save()
+    pdf_buf.seek(0)
+    return pdf_buf.getvalue()
 
-    # ---- TEXT (LOGO KE RIGHT) – fixed font auto‑fit ----
-    c.setFillColor(black)
-    base_font = "Helvetica-Bold"
-
-    band_margin_x = 4 * mm
-    text_left_x = green_x + green_w + 3 * mm
-    text_right_x = right_x + right_w - band_margin_x
-    max_width = text_right_x - text_left_x
-
-    max_font_from_height = band_height * 0.95
-    size = min(FIXED_FONT_SIZE, int(max_font_from_height))
-    while size > 8:
-        w = c.stringWidth(barcode_text, base_font, size)
-        if w <= max_width:
-            break
-        size -= 1
-
-    c.setFont(base_font, size)
-    text_center_x = text_left_x + max_width / 2.0
-    c.drawCentredString(text_center_x, text_center_y, barcode_text)
-
-    c.showPage()
-    c.save()
-    pdf_buffer.seek(0)
-
-    return pdf_buffer.getvalue()
-
-
-# ===== MAIN AREA =====
-col_preview, col_info = st.columns([3, 1])
-
-with col_preview:
-    st.markdown(
-        """
-        <div class="preview-card">
-            <div class="preview-title">Live label preview</div>
-            <div class="preview-sub">
-                Adjust settings on the left and export a print‑ready PDF in one click.
-            </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    if preview_btn:
-        try:
-            with st.spinner("Rendering premium label..."):
-                pdf_bytes = build_pdf(
-                    module_h=module_height,
-                    module_w=module_width,
-                    dpi=dpi_value,
-                )
-            st.success("Preview ready.")
-            st.download_button(
-                "⬇️ Download preview PDF",
-                data=pdf_bytes,
-                file_name=f"preview_{barcode_text}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    if download_btn:
-        try:
-            with st.spinner("Exporting high‑resolution PDF..."):
-                pdf_bytes = build_pdf(
-                    module_h=module_height,
-                    module_w=module_width,
-                    dpi=dpi_value,
-                )
-            st.success("✅ Final PDF ready!")
-            st.download_button(
-                "⬇️ Download Final PDF",
-                data=pdf_bytes,
-                file_name=f"label_{barcode_text}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col_info:
-    st.markdown(
-        """
-        <div class="preview-card" style="padding:14px 14px;">
-            <div class="preview-title" style="font-size:16px;">Current settings</div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.write(f"Code: **{barcode_text}**")
-    st.write(f"Size: **{label_width_mm} mm × {label_height_mm} mm**")
-    st.write(f"Barcode DPI: **{dpi_value}**")
-    st.write(f"Module (h × w): **{module_height} × {module_width}**")
-    st.markdown("</div>", unsafe_allow_html=True)
+# ===== MAIN APP =====
+if preview_btn or download_btn:
+    try:
+        with st.spinner("Generating PDF..."):
+            pdf_data = build_pdf()
+        st.success("Success!")
+        st.download_button("Download PDF", data=pdf_data, file_name=f"{barcode_text}.pdf", mime="application/pdf", use_container_width=True)
+    except Exception as e:
+        st.error(f"Error: {e}")
