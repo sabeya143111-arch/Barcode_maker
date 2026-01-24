@@ -97,14 +97,14 @@ with st.sidebar:
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
     label_height_mm = c2.number_input("Height (mm)", value=60.0)
-    underline_gap_mm = st.slider("Underline Gap (mm)", 1.0, 10.0, 3.0)
+    logo_to_text_gap_mm = st.slider("Gap Logo ↔ Text (mm)", 2.0, 15.0, 6.0)
+    underline_gap_mm = st.slider("Underline gap below text (mm)", 0.5, 8.0, 2.0)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
     st.markdown("---")
-    st.caption("Logo & Text Layout")
-    logo_width_percent = st.slider("Logo Width % of band", 10, 80, 30)
-    logo_height_percent = st.slider("Logo Height % of band", 30, 100, 75)
+    st.caption("Logo Size")
+    logo_height_percent = st.slider("Logo Height % of bottom band", 50, 100, 80)
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
@@ -171,7 +171,7 @@ def build_pdf():
     c.setFillColor(black)
     c.drawPath(path, stroke=0, fill=1)
 
-    # Right Box - connected (no gap)
+    # Right Box - connected to left
     rx = m + lw_left
     rw = lw - rx - m
     rh = lh - 2 * m
@@ -180,8 +180,9 @@ def build_pdf():
 
     # Barcode Placement
     bh = rh * 0.50
+    barcode_top_gap = 5 * mm
     bw = rw * 0.92
-    barcode_y = m + rh - bh - 4 * mm
+    barcode_y = m + rh - bh - barcode_top_gap
     c.drawImage(
         bar_ir,
         rx + (rw - bw) / 2,
@@ -191,32 +192,17 @@ def build_pdf():
         mask="auto",
     )
 
-    # Bottom band calculation (no separator line)
-    barcode_bottom_y = barcode_y
-    gap_after_bar = 2 * mm
-    virtual_line_y = barcode_bottom_y - gap_after_bar
-    band_h = virtual_line_y - m - 3 * mm
+    # Bottom band calculation
+    gap_after_bar = 3 * mm
+    band_top_y = barcode_y - gap_after_bar
     band_y = m + 3 * mm
+    band_h = band_top_y - band_y
 
-    # Logo + Text in bottom band
-    usable_width = rw - 8 * mm
-    logo_section_w = usable_width * (logo_width_percent / 100.0)
+    # Logo placement (keep aspect ratio, size by height %)
     logo_x = rx + 4 * mm
-
-    # Logo sizing (fill height percent, keep ratio, cap to section width)
     lh_logo = band_h * (logo_height_percent / 100.0)
-    lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
-    if lw_logo / lh_logo > ratio:
-        lw_logo = lh_logo * ratio
-    else:
-        lh_logo = lw_logo / ratio
-
-    # Cap to fit in allocated section
-    if lw_logo > logo_section_w:
-        lw_logo = logo_section_w
-        lh_logo = lw_logo / ratio
-
+    lw_logo = lh_logo * ratio
     logo_y = band_y + (band_h - lh_logo) / 2
     c.drawImage(
         logo_ir,
@@ -227,13 +213,14 @@ def build_pdf():
         mask="auto",
     )
 
-    # Text section
-    text_start_x = logo_x + logo_section_w + 2 * mm
+    # Text placement (centered in remaining space after logo)
+    gap_logo_text = logo_to_text_gap_mm * mm
+    text_start_x = logo_x + lw_logo + gap_logo_text
     max_tw = rx + rw - text_start_x - 4 * mm
 
-    # Dynamic text size
-    text_size = int(band_h / 1.3)
-    text_size = min(text_size, 60)
+    # Dynamic text size (start larger for bigger text)
+    text_size = int(band_h / 1.15)
+    text_size = min(text_size, 70)
     text_size = max(text_size, 20)
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
@@ -242,11 +229,11 @@ def build_pdf():
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
-    text_y = band_y + band_h / 2 - text_size / 3
+    text_y = band_y + band_h / 2 - text_size / 3   # baseline approx centered
     c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
 
-    # Underline below text (full width of right box)
-    c.setLineWidth(1.0)
+    # Thin underline full width
+    c.setLineWidth(0.8)
     underline_y = text_y - underline_gap_mm * mm
     c.line(rx + 3 * mm, underline_y, rx + rw - 3 * mm, underline_y)
 
