@@ -20,17 +20,17 @@ GITHUB_LOGO_URL = (
 )
 
 def load_logo():
-    """Pehle local logo, agar fail hua to GitHub wala."""
+    """Pehle local logo, phir GitHub; agar dono fail, None."""
     # 1) Local logo
-    if LOCAL_LOGO_PATH.exists():
-        try:
+    try:
+        if LOCAL_LOGO_PATH.exists():
             img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             buf.seek(0)
             return img, ImageReader(buf)
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     # 2) GitHub logo fallback
     try:
@@ -220,6 +220,9 @@ def build_pdf(
 
     # ---------- LOGO (FIXED) ----------
     logo_img, logo_ir = load_logo()
+    if not logo_img or not logo_ir:
+        # Agar yahan error aa gaya to samajh lo logo file hi issue hai
+        raise ValueError("Logo load nahi ho raha — assets/logo.png check karo.")
 
     # ---------- BARCODE ----------
     bbuf = io.BytesIO()
@@ -345,28 +348,31 @@ def build_pdf(
     green_x = right_x + 4 * mm
     green_y = band_bottom_y + (band_height - green_h) / 2.0
 
-    if logo_img and logo_ir:
-        logo_margin = 1.0 * mm
-        logo_w = green_w - 2 * logo_margin
-        logo_h = green_h - 2 * logo_margin
+    # Debug outline (ek baar test ke liye rakho; baad me hata sakte ho)
+    c.setStrokeColor(black)
+    c.rect(green_x, green_y, green_w, green_h, stroke=1, fill=0)
 
-        ratio = logo_img.width / logo_img.height
-        if logo_w / logo_h > ratio:
-            logo_w = logo_h * ratio
-        else:
-            logo_h = logo_w / ratio
+    logo_margin = 1.0 * mm
+    logo_w = green_w - 2 * logo_margin
+    logo_h = green_h - 2 * logo_margin
 
-        lx = green_x + (green_w - logo_w) / 2.0
-        ly = green_y + (green_h - logo_h) / 2.0
+    ratio = logo_img.width / logo_img.height
+    if logo_w / logo_h > ratio:
+        logo_w = logo_h * ratio
+    else:
+        logo_h = logo_w / ratio
 
-        c.drawImage(
-            logo_ir,
-            lx,
-            ly,
-            width=logo_w,
-            height=logo_h,
-            mask="auto",
-        )
+    lx = green_x + (green_w - logo_w) / 2.0
+    ly = green_y + (green_h - logo_h) / 2.0
+
+    c.drawImage(
+        logo_ir,
+        lx,
+        ly,
+        width=logo_w,
+        height=logo_h,
+        mask="auto",
+    )
 
     # ---- TEXT (LOGO KE RIGHT) – fixed font auto‑fit ----
     c.setFillColor(black)
