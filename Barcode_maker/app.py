@@ -19,21 +19,9 @@ GITHUB_LOGO_URL = (
     "sabeya143111-arch/Barcode_maker/main/assets/logo.png"
 )
 
-
-def load_logo(uploaded_file=None):
-    """Logo load karega - pehle uploaded, phir local, phir GitHub se."""
-    # 1) User uploaded logo
-    if uploaded_file is not None:
-        try:
-            img = Image.open(uploaded_file).convert("RGBA")
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            buf.seek(0)
-            return img, ImageReader(buf)
-        except Exception:
-            pass
-
-    # 2) Local logo
+def load_logo():
+    """Pehle local logo, agar fail hua to GitHub wala."""
+    # 1) Local logo
     if LOCAL_LOGO_PATH.exists():
         try:
             img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -44,7 +32,7 @@ def load_logo(uploaded_file=None):
         except Exception:
             pass
 
-    # 3) GitHub logo
+    # 2) GitHub logo fallback
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -199,11 +187,6 @@ with st.sidebar:
         "Text–underline gap (mm)", min_value=1.0, max_value=10.0, value=2.0, step=0.5
     )
 
-    st.markdown('<div class="section-title">Logo</div>', unsafe_allow_html=True)
-    uploaded_logo = st.file_uploader(
-        "Custom logo (PNG/JPG)", type=["png", "jpg", "jpeg"]
-    )
-
     st.markdown('<div class="section-title">Barcode</div>', unsafe_allow_html=True)
     module_height = st.slider(
         "Height", min_value=5, max_value=40, value=18, step=1
@@ -224,10 +207,8 @@ with st.sidebar:
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
 
-
-# ===== FIXED VALUES =====
-FIXED_FONT_SIZE = 66  # text ka base size – zarurat ho to 65–68 me tweak kar sakte ho
-
+# ===== FIXED TEXT SIZE =====
+FIXED_FONT_SIZE = 66
 
 def build_pdf(
     module_h: int = 18,
@@ -237,8 +218,8 @@ def build_pdf(
     if not barcode_text.strip():
         raise ValueError("Code likho.")
 
-    # ---------- LOGO ----------
-    logo_img, logo_ir = load_logo(uploaded_logo)
+    # ---------- LOGO (FIXED) ----------
+    logo_img, logo_ir = load_logo()
 
     # ---------- BARCODE ----------
     bbuf = io.BytesIO()
@@ -340,7 +321,7 @@ def build_pdf(
     # ---- TEXT + LOGO BAND (BARCODE KE NICHE) ----
     band_top_y = barcode_area_bottom - underline_gap_mm * mm
     band_bottom_y = right_y + 3 * mm
-    text_center_y = (band_top_y + band_bottom_y) / 2.0 + 0.6 * mm  # thoda upar feel
+    text_center_y = (band_top_y + band_bottom_y) / 2.0 + 0.6 * mm
 
     c.setLineWidth(2)
     c.line(
@@ -413,7 +394,6 @@ def build_pdf(
     pdf_buffer.seek(0)
 
     return pdf_buffer.getvalue()
-
 
 # ===== MAIN AREA =====
 col_preview, col_info = st.columns([3, 1])
