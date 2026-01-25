@@ -102,7 +102,6 @@ st.markdown(
         border-right: 1px solid rgba(148,163,184,0.5);
         color: #E5E7EB;
     }
-    /* Streamlit default text inputs / labels */
     label, .stMarkdown, .stTextInput, .stNumberInput, .stSlider, .stButton {
         color: #E5E7EB !important;
     }
@@ -359,6 +358,7 @@ with st.sidebar:
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
 
+
 # ===== PDF BUILDER =====
 def build_pdf():
     logo_img, logo_ir = load_logo()
@@ -445,7 +445,7 @@ def build_pdf():
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # ---------- LOGO (slightly bigger) ----------
+    # LOGO
     usable_w = rw - 8 * mm
     logo_section_w = usable_w * 0.50
     logo_x = rx + 4 * mm
@@ -466,7 +466,7 @@ def build_pdf():
         mask="auto",
     )
 
-    # ---------- TEXT (centre + bigger) ----------
+    # TEXT
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
     text_size = int(band_h * 1.0)
