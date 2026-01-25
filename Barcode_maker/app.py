@@ -1,6 +1,6 @@
 import streamlit as st
 from pathlib import Path
-from PIL import Image, ImageChops, Image
+from PIL import Image, ImageChops
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import black, HexColor
@@ -204,6 +204,11 @@ st.markdown(
         50% { text-shadow: 0 14px 45px rgba(249,115,22,0.5); }
         100% { text-shadow: 0 10px 25px rgba(0,0,0,0.8); }
     }
+    @keyframes borderGlow {
+        0% { opacity: 0.65; box-shadow: 0 0 12px rgba(250,204,21,0.2); }
+        50% { opacity: 1; box-shadow: 0 0 30px rgba(56,189,248,0.35); }
+        100% { opacity: 0.65; box-shadow: 0 0 12px rgba(250,204,21,0.2); }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -232,88 +237,111 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ===== FEATURE + STATS SECTION =====
-col_left, col_right = st.columns([2, 1.4])
+# ===== LUX FEATURE GRID =====
+st.markdown(
+    """
+    <div style="
+        margin-top: 0.8rem;
+        margin-bottom: 1.4rem;
+        padding: 1px;
+        border-radius: 18px;
+        background: linear-gradient(120deg, rgba(250,204,21,0.25), rgba(56,189,248,0.1), rgba(249,115,22,0.25));
+        animation: borderGlow 4s ease-in-out infinite;
+    ">
+      <div class="glass-card" style="border-radius: 16px; background: radial-gradient(circle at top left, rgba(15,23,42,0.98), rgba(15,23,42,0.92));">
+        <div style="display:flex; flex-wrap:wrap; gap:18px; align-items:stretch;">
+          
+          <!-- Left big value prop -->
+          <div style="flex:1.3; min-width:230px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.18em; color:#9CA3AF;">
+              BUILT FOR BUSY WAREHOUSES
+            </div>
+            <div style="font-size:20px; font-weight:650; color:#F9FAFB;">
+              One clean tool to generate every location label your pickers will ever scan.
+            </div>
+            <div style="display:flex; gap:16px; margin-top:6px;">
+              <div style="font-size:24px; font-weight:700; color:#FACC15;">60s</div>
+              <div style="font-size:12px; color:#E5E7EB;">
+                From typing a new rack code<br>to downloading a print‑ready PDF.
+              </div>
+            </div>
+            <div style="margin-top:6px; font-size:11px; color:#9CA3AF;">
+              Optimised for barcode scanners, forklifts & real‑world warehouse chaos.
+            </div>
+          </div>
 
-with col_left:
-    st.markdown(
-        """
-        <div class="glass-card" style="margin-bottom: 1rem;">
-            <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:6px; color:#9CA3AF;">
-                WHY SWAG BARCODE MAKER
+          <!-- Middle feature pills -->
+          <div style="flex:1; min-width:220px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.16em; color:#9CA3AF;">
+              SIGNATURE FEATURES
             </div>
-            <div style="font-size:18px; font-weight:600; margin-bottom:10px; color:#F9FAFB;">
-                Pixel‑perfect warehouse labels, without touching Illustrator.
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+              <div style="
+                  padding:8px 10px;
+                  border-radius:999px;
+                  background:rgba(15,23,42,0.95);
+                  border:1px solid rgba(148,163,184,0.6);
+                  display:flex; align-items:center; gap:8px;
+              ">
+                <span style="width:7px; height:7px; border-radius:999px; background:#FACC15; box-shadow:0 0 10px rgba(250,204,21,1);"></span>
+                <span>Smart spacing: text + logo + barcode always perfectly balanced.</span>
+              </div>
+              <div style="
+                  padding:8px 10px;
+                  border-radius:999px;
+                  background:rgba(15,23,42,0.95);
+                  border:1px solid rgba(148,163,184,0.45);
+                  display:flex; align-items:center; gap:8px;
+              ">
+                <span style="width:7px; height:7px; border-radius:999px; background:#38BDF8; box-shadow:0 0 10px rgba(56,189,248,1);"></span>
+                <span>High‑DPI export tuned for thermal & laser label printers.</span>
+              </div>
+              <div style="
+                  padding:8px 10px;
+                  border-radius:999px;
+                  background:rgba(15,23,42,0.95);
+                  border:1px solid rgba(148,163,184,0.45);
+                  display:flex; align-items:center; gap:8px;
+              ">
+                <span style="width:7px; height:7px; border-radius:999px; background:#22C55E; box-shadow:0 0 10px rgba(34,197,94,1);"></span>
+                <span>Odoo‑ready Code128 barcodes that scan perfectly first time.</span>
+              </div>
             </div>
-            <ul style="font-size:13px; color:#E5E7EB; line-height:1.6; margin-left:-18px; list-style:none;">
-                <li>• Odoo‑ready Code128 barcodes with clean human‑readable text.</li>
-                <li>• Auto logo placement with transparent PNG support.</li>
-                <li>• Flexible label size controls in millimetres (A4, shelf tags, bins, pallets).</li>
-                <li>• High‑DPI PDF export for thermal & laser printers.</li>
-                <li>• Built for multi‑warehouse ops: fast typing, instant download.</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+          </div>
 
-    st.markdown(
-        """
-        <div class="glass-card" style="display:flex; gap:14px; align-items:stretch;">
-            <div style="flex:1; border-right:1px solid rgba(55,65,81,0.7); padding-right:10px;">
-                <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:4px;">
-                    HOW IT WORKS
-                </div>
-                <ol style="font-size:12px; color:#E5E7EB; padding-left:16px; margin:0;">
-                    <li>Type or paste your location code.</li>
-                    <li>Adjust label size, bar height & DPI.</li>
-                    <li>Click Download to get a print‑ready PDF.</li>
-                </ol>
+          <!-- Right mini cards -->
+          <div style="flex:0.9; min-width:210px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.16em; color:#9CA3AF;">
+              TUNED CONTROLS
             </div>
-            <div style="flex:1; padding-left:4px;">
-                <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:4px;">
-                    PERFECT FOR
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.6);">
+                <div style="font-size:11px; color:#9CA3AF;">LABEL CANVAS</div>
+                <div style="font-size:13px; color:#E5E7EB;">
+                  Width / height in millimetres for A4 sheets, rack strips, bin labels & pallet tags.
                 </div>
-                <ul style="font-size:12px; color:#E5E7EB; padding-left:16px; margin:0;">
-                    <li>Racks & aisles</li>
-                    <li>Bin locations</li>
-                    <li>Picking faces</li>
-                    <li>Bulk storage zones</li>
-                </ul>
+              </div>
+              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.45);">
+                <div style="font-size:11px; color:#9CA3AF;">BARCODE LOOK</div>
+                <div style="font-size:13px; color:#E5E7EB;">
+                  Control bar height + thickness so every scanner in the building reads it clean.
+                </div>
+              </div>
+              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.45);">
+                <div style="font-size:11px; color:#9CA3AF;">PRINT QUALITY</div>
+                <div style="font-size:13px; color:#E5E7EB;">
+                  DPI slider for crisp lines on both economy and high‑end printers.
+                </div>
+              </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+          </div>
 
-with col_right:
-    st.markdown(
-        """
-        <div class="glass-card" style="text-align:left;">
-            <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:8px;">
-                WAREHOUSE STATS SNAPSHOT
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <div>
-                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">600+</div>
-                    <div style="font-size:11px; color:#D1D5DB;">Locations labelled per hour</div>
-                </div>
-                <div>
-                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">4x</div>
-                    <div style="font-size:11px; color:#D1D5DB;">Faster than manual label design</div>
-                </div>
-                <div>
-                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">99.9%</div>
-                    <div style="font-size:11px; color:#D1D5DB;">Scan success on Code128 barcodes</div>
-                </div>
-            </div>
-            <div style="margin-top:10px; font-size:11px; color:#9CA3AF;">
-                Designed for Swag warehouse & Odoo inventory workflows.
-            </div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ===== SIDEBAR =====
 with st.sidebar:
