@@ -23,6 +23,16 @@ GITHUB_LOGO_URL = (
 _logo_cache = {}
 
 
+def _make_square_rgba(img: Image.Image) -> Image.Image:
+    """Transparent PNG ko square canvas pe centre karta hai."""
+    side = max(img.width, img.height)
+    canvas_img = Image.new("RGBA", (side, side), (255, 255, 255, 0))
+    off_x = (side - img.width) // 2
+    off_y = (side - img.height) // 2
+    canvas_img.paste(img, (off_x, off_y), img)
+    return canvas_img
+
+
 def load_logo():
     """Pehle local logo, phir GitHub fallback; buffers ko cache mein rakhta hai."""
     if "img" in _logo_cache:
@@ -31,7 +41,8 @@ def load_logo():
     # 1) Local logo check
     try:
         if LOCAL_LOGO_PATH.exists():
-            img = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
+            raw = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
+            img = _make_square_rgba(raw)
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             buf.seek(0)
@@ -47,7 +58,8 @@ def load_logo():
         data = response.read()
         buf = io.BytesIO(data)
         buf.seek(0)
-        img = Image.open(buf).convert("RGBA")
+        raw = Image.open(buf).convert("RGBA")
+        img = _make_square_rgba(raw)
         buf2 = io.BytesIO()
         img.save(buf2, format="PNG")
         buf2.seek(0)
@@ -127,7 +139,7 @@ def build_pdf():
     if not logo_ir:
         raise ValueError("Logo not found.")
 
-    # -------- BARCODE GENERATION --------
+    # BARCODE
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
     code128.render(
@@ -141,13 +153,13 @@ def build_pdf():
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
-    # -------- CANVAS SETUP --------
+    # CANVAS
     lw, lh = label_width_mm * mm, label_height_mm * mm
     pdf_buf = io.BytesIO()
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
     m = 3 * mm
 
-    # ===== LEFT ARROW BOX =====
+    # LEFT ARROW BOX
     lw_left = lw * 0.25
     lh_left = lh - 2 * m
     c.setLineWidth(1.2)
@@ -182,14 +194,14 @@ def build_pdf():
     c.setFillColor(black)
     c.drawPath(path, stroke=0, fill=1)
 
-    # ===== RIGHT MAIN BOX =====
+    # RIGHT MAIN BOX
     rx = m + lw_left + 1 * mm
     rw = lw - rx - m
     rh = lh - 2 * m
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # ===== BARCODE AREA (TOP) =====
+    # BARCODE TOP
     bh = rh * 0.42
     bw = rw * 0.92
     c.drawImage(
@@ -205,11 +217,11 @@ def build_pdf():
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
 
-    # ===== BOTTOM BAND (LOGO + TEXT) =====
+    # BOTTOM BAND
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # ---- LOGO: big like sample ----
+    # LOGO – big as possible
     usable_w = rw - 8 * mm
     logo_section_w = usable_w * 0.45
     logo_x = rx + 4 * mm
@@ -232,7 +244,7 @@ def build_pdf():
         mask="auto",
     )
 
-    # ---- TEXT ----
+    # TEXT
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
 
@@ -260,7 +272,7 @@ def build_pdf():
 if preview_btn or download_btn:
     try:
         with st.spinner("Generating PDF..."):
-            pdf_data = build_pdf()
+       	    pdf_data = build_pdf()
         st.success("Success!")
         st.download_button(
             "Download PDF",
