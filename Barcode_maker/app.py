@@ -222,8 +222,8 @@ def build_pdf():
     band_h = line_y - band_y - 2 * mm
 
     # LOGO – maximum size
-    usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.55   # > half width logo ke liye
+    usable_w = rw - 18 * mm
+    logo_section_w = usable_w * 0.95   # > half width logo ke liye
     logo_x = rx + 4 * mm
 
     lh_logo = band_h * 0.995          # almost full band height
@@ -283,3 +283,4 @@ if preview_btn or download_btn:
         )
     except Exception as e:
         st.error(f"Error: {e}")
+
