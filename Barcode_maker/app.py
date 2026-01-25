@@ -236,7 +236,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ===== FEATURE GRID (yahi block tumne bheja tha, ab sahi wrap kiya) =====
+# ===== FEATURE GRID =====
 st.markdown(
     """
     <div style="
