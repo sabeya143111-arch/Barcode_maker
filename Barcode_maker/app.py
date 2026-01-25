@@ -127,7 +127,7 @@ def build_pdf():
     if not logo_ir:
         raise ValueError("Logo not found.")
 
-    # Barcode setup
+    # -------- BARCODE GENERATION --------
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
     code128.render(
@@ -141,87 +141,85 @@ def build_pdf():
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
-    # Canvas setup
+    # -------- CANVAS SETUP --------
     lw, lh = label_width_mm * mm, label_height_mm * mm
     pdf_buf = io.BytesIO()
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
     m = 3 * mm
 
-    # Left Box (Arrow Box)
-    lw_left = lw * 0.26
+    # ===== LEFT ARROW BOX =====
+    lw_left = lw * 0.25             # 25% width
     lh_left = lh - 2 * m
     c.setLineWidth(1.2)
     c.setStrokeColor(black)
-    c.roundRect(m, m, lw_left, lh_left, 2.5 * mm)
+    c.roundRect(m, m, lw_left, lh_left, 3 * mm)
 
-    # Fill arrow box background
+    # grey background
     c.setFillColor(HexColor("#DDDDDD"))
     c.roundRect(
-        m + 0.8 * mm,
-        m + 0.8 * mm,
-        lw_left - 1.6 * mm,
-        lh_left - 1.6 * mm,
+        m + 1 * mm,
+        m + 1 * mm,
+        lw_left - 2 * mm,
+        lh_left - 2 * mm,
         2.5 * mm,
         stroke=0,
         fill=1,
     )
 
-    # Arrow Shape
+    # big UP arrow
     mx = m + lw_left / 2
-    ty = m + lh_left - 2 * mm
-    by = m + 2 * mm
+    top_y = m + lh_left - 3 * mm
+    bottom_y = m + 3 * mm
+    mid_y = bottom_y + lh_left * 0.45
+
     path = c.beginPath()
-    path.moveTo(mx - (lw_left * 0.19), by)
-    path.lineTo(mx + (lw_left * 0.19), by)
-    path.lineTo(mx + (lw_left * 0.19), by + lh_left * 0.5)
-    path.lineTo(m + lw_left * 0.95, by + lh_left * 0.5)
-    path.lineTo(mx, ty)
-    path.lineTo(m + lw_left * 0.05, by + lh_left * 0.5)
-    path.lineTo(mx - (lw_left * 0.19), by + lh_left * 0.5)
+    path.moveTo(mx - lw_left * 0.20, bottom_y)
+    path.lineTo(mx + lw_left * 0.20, bottom_y)
+    path.lineTo(mx + lw_left * 0.20, mid_y)
+    path.lineTo(m + lw_left * 0.93, mid_y)
+    path.lineTo(mx, top_y)
+    path.lineTo(m + lw_left * 0.07, mid_y)
+    path.lineTo(mx - lw_left * 0.20, mid_y)
     path.close()
     c.setFillColor(black)
     c.drawPath(path, stroke=0, fill=1)
 
-    # Right Box
+    # ===== RIGHT MAIN BOX =====
     rx = m + lw_left + 1 * mm
     rw = lw - rx - m
     rh = lh - 2 * m
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # Barcode Placement (Top of Right Box)
-    bh = rh * 0.50
+    # ===== BARCODE AREA (TOP) =====
+    bh = rh * 0.42          # approx 40–45% of height
     bw = rw * 0.92
     c.drawImage(
         bar_ir,
         rx + (rw - bw) / 2,
-        m + rh - bh - 4 * mm,
+        m + rh - bh - 3 * mm,
         width=bw,
         height=bh,
         mask="auto",
     )
 
-    # Separator Line
-    line_y = m + rh - bh - 8 * mm
+    # separator line just under barcode
+    line_y = m + rh - bh - 6 * mm
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
 
-    # Bottom Area (Logo + Text)
-    band_h = line_y - m - 3 * mm
-    band_y = m + 3 * mm
+    # ===== BOTTOM BAND (LOGO + TEXT) =====
+    band_y = m + 4 * mm
+    band_h = line_y - band_y - 2 * mm
 
-    # ==== Bigger Logo + Adjusted Text ====
-    usable_width = rw - 8 * mm  # inner padding
-
-    # Logo section (left) – more space
-    logo_section_w = usable_width * 0.60  # was 0.50
+    # ---- LOGO ----
+    usable_w = rw - 8 * mm
+    logo_section_w = usable_w * 0.35   # round logo around 1/3 width
     logo_x = rx + 4 * mm
 
-    # Logo sizing – almost full band height
-    lh_logo = band_h * 0.95          # was 0.85
+    lh_logo = band_h * 0.9
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
-
     if lw_logo / lh_logo > ratio:
         lw_logo = lh_logo * ratio
     else:
@@ -237,17 +235,16 @@ def build_pdf():
         mask="auto",
     )
 
-    # Text section (right)
+    # ---- TEXT ----
     text_start_x = logo_x + logo_section_w + 2 * mm
     max_tw = rx + rw - text_start_x - 4 * mm
 
-    text_size = int(band_h / 1.3)
-    text_size = min(text_size, 60)
-    text_size = max(text_size, 20)
+    text_size = int(band_h * 0.8)      # big bold text
+    text_size = min(text_size, 48)
+    text_size = max(text_size, 18)
 
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-
     while tw > max_tw and text_size > 14:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
@@ -256,6 +253,7 @@ def build_pdf():
     text_y = band_y + band_h / 2 - text_size / 3
     c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
 
+    # ===== FINISH =====
     c.showPage()
     c.save()
     pdf_buf.seek(0)
