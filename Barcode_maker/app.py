@@ -84,15 +84,18 @@ def load_logo():
 
 # ===== PAGE CONFIG + GLOBAL CSS =====
 st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
+
 st.markdown(
     """
     <style>
     .stApp {
         background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
+        color: #E5E7EB;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     }
     .block-container {
-        padding-top: 1.5rem;
-        max-width: 1200px;
+        padding-top: 2.5rem;
+        max-width: 1000px;
     }
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at top, #111827 0, #020617 55%);
@@ -100,36 +103,104 @@ st.markdown(
     }
     .glass-card {
         background: rgba(15,23,42,0.85);
-        border-radius: 14px;
-        padding: 14px;
+        border-radius: 16px;
+        padding: 16px;
         border: 1px solid rgba(148,163,184,0.35);
-        box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.55);
         backdrop-filter: blur(18px);
     }
+    .hero-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.8rem;
+        margin-bottom: 1.8rem;
+    }
+    .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: rgba(15,23,42,0.9);
+        border: 1px solid rgba(248,250,252,0.15);
+        box-shadow: 0 0 0 1px rgba(15,23,42,0.6);
+        font-size: 12px;
+        color: #9CA3AF;
+    }
+    .hero-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #22C55E;
+        box-shadow: 0 0 12px rgba(34,197,94,0.9);
+        animation: pulse 1.8s ease-out infinite;
+    }
     .hero-title {
-        font-size: 40px;
-        font-weight: 800;
-        background: linear-gradient(90deg,#FF6B35,#FACC15);
+        font-size: 52px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: conic-gradient(from 180deg, #F97316, #FACC15, #22C55E, #F97316);
         -webkit-background-clip: text;
         color: transparent;
+        text-shadow: 0 14px 40px rgba(0,0,0,0.75);
+        animation: glowText 3.5s ease-in-out infinite;
     }
     .hero-sub {
         font-size: 14px;
         color: #9CA3AF;
+        max-width: 520px;
+    }
+    .hero-sub span {
+        color: #FACC15;
+        font-weight: 600;
+    }
+    .hero-bottom-note {
+        font-size: 11px;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        60% { transform: scale(1.6); opacity: 0; }
+        100% { transform: scale(1.6); opacity: 0; }
+    }
+    @keyframes glowText {
+        0% { text-shadow: 0 10px 25px rgba(0,0,0,0.7); }
+        50% { text-shadow: 0 14px 45px rgba(249,115,22,0.4); }
+        100% { text-shadow: 0 10px 25px rgba(0,0,0,0.7); }
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ===== HERO HEADER =====
-col_h1, col_h2 = st.columns([3, 1])
-with col_h1:
-    st.markdown('<div class="hero-title">Swag Logo Maker</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="hero-sub">Premium warehouse labels • Odoo‑ready • High‑res PDFs</div>',
-        unsafe_allow_html=True,
-    )
+# ===== HERO HEADER (CENTERED, ANIMATED) =====
+st.markdown(
+    """
+    <div class="hero-wrapper">
+        <div class="hero-pill">
+            <div class="hero-dot"></div>
+            <span>Instant warehouse labels • Made for Odoo</span>
+        </div>
+        <div class="hero-title">
+            SWAG BARCODE MAKER
+        </div>
+        <div class="hero-sub">
+            Design <span>premium location labels</span> with logo + Code128 barcode,
+            export as crisp high‑res PDFs ready for warehouse printing.
+        </div>
+        <div class="hero-bottom-note">
+            TYPE LOCATION • TUNE SIZE • DOWNLOAD PDF
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ===== SIDEBAR =====
 with st.sidebar:
