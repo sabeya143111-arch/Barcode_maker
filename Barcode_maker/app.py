@@ -148,13 +148,12 @@ def build_pdf():
     m = 3 * mm
 
     # ===== LEFT ARROW BOX =====
-    lw_left = lw * 0.25             # 25% width
+    lw_left = lw * 0.25
     lh_left = lh - 2 * m
     c.setLineWidth(1.2)
     c.setStrokeColor(black)
     c.roundRect(m, m, lw_left, lh_left, 3 * mm)
 
-    # grey background
     c.setFillColor(HexColor("#DDDDDD"))
     c.roundRect(
         m + 1 * mm,
@@ -166,7 +165,6 @@ def build_pdf():
         fill=1,
     )
 
-    # big UP arrow
     mx = m + lw_left / 2
     top_y = m + lh_left - 3 * mm
     bottom_y = m + 3 * mm
@@ -192,7 +190,7 @@ def build_pdf():
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
     # ===== BARCODE AREA (TOP) =====
-    bh = rh * 0.42          # approx 40–45% of height
+    bh = rh * 0.42
     bw = rw * 0.92
     c.drawImage(
         bar_ir,
@@ -203,7 +201,6 @@ def build_pdf():
         mask="auto",
     )
 
-    # separator line just under barcode
     line_y = m + rh - bh - 6 * mm
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
@@ -212,12 +209,12 @@ def build_pdf():
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # ---- LOGO ----
+    # ---- LOGO: big like sample ----
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.35   # round logo around 1/3 width
+    logo_section_w = usable_w * 0.45
     logo_x = rx + 4 * mm
 
-    lh_logo = band_h * 0.9
+    lh_logo = band_h * 0.98
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio:
@@ -236,10 +233,10 @@ def build_pdf():
     )
 
     # ---- TEXT ----
-    text_start_x = logo_x + logo_section_w + 2 * mm
-    max_tw = rx + rw - text_start_x - 4 * mm
+    text_start_x = logo_x + logo_section_w + 1 * mm
+    max_tw = rx + rw - text_start_x - 3 * mm
 
-    text_size = int(band_h * 0.8)      # big bold text
+    text_size = int(band_h * 0.8)
     text_size = min(text_size, 48)
     text_size = max(text_size, 18)
 
@@ -253,7 +250,6 @@ def build_pdf():
     text_y = band_y + band_h / 2 - text_size / 3
     c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
 
-    # ===== FINISH =====
     c.showPage()
     c.save()
     pdf_buf.seek(0)
