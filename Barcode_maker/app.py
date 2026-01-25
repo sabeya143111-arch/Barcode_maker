@@ -217,16 +217,16 @@ def build_pdf():
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
 
-    # BOTTOM BAND
+    # ===== BOTTOM BAND (LOGO + TEXT) =====
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # LOGO – big as possible
+    # LOGO – maximum size
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.45
+    logo_section_w = usable_w * 0.55   # > half width logo ke liye
     logo_x = rx + 4 * mm
 
-    lh_logo = band_h * 0.98
+    lh_logo = band_h * 0.995          # almost full band height
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio:
@@ -244,9 +244,9 @@ def build_pdf():
         mask="auto",
     )
 
-    # TEXT
-    text_start_x = logo_x + logo_section_w + 1 * mm
-    max_tw = rx + rw - text_start_x - 3 * mm
+    # TEXT – remaining narrow area
+    text_start_x = logo_x + logo_section_w + 0.5 * mm
+    max_tw = rx + rw - text_start_x - 2 * mm
 
     text_size = int(band_h * 0.8)
     text_size = min(text_size, 48)
@@ -272,7 +272,7 @@ def build_pdf():
 if preview_btn or download_btn:
     try:
         with st.spinner("Generating PDF..."):
-       	    pdf_data = build_pdf()
+            pdf_data = build_pdf()
         st.success("Success!")
         st.download_button(
             "Download PDF",
