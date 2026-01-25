@@ -1,6 +1,6 @@
 import streamlit as st
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageChops
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import black, HexColor
@@ -13,7 +13,6 @@ from urllib.request import urlopen
 # ===== PATH / LOGO SETTINGS =====
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_LOGO_PATH = BASE_DIR / "assets" / "logo.png"
-
 GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
@@ -23,8 +22,21 @@ GITHUB_LOGO_URL = (
 _logo_cache = {}
 
 
+def _crop_alpha(img: Image.Image) -> Image.Image:
+    """Transparent borders hata ke tight crop karta hai."""
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+    bg = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    diff = ImageChops.difference(img, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        return img.crop(bbox)
+    return img
+
+
 def _make_square_rgba(img: Image.Image) -> Image.Image:
-    """Transparent PNG ko square canvas pe centre karta hai."""
+    """Transparent PNG ko pehle crop, fir square canvas pe centre karta hai."""
+    img = _crop_alpha(img)
     side = max(img.width, img.height)
     canvas_img = Image.new("RGBA", (side, side), (255, 255, 255, 0))
     off_x = (side - img.width) // 2
@@ -72,12 +84,16 @@ def load_logo():
 
 # ===== PAGE CONFIG + GLOBAL CSS =====
 st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
-
 st.markdown(
     """
     <style>
-    .stApp { background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%); }
-    .block-container { padding-top: 1.5rem; max-width: 1200px; }
+    .stApp {
+        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
+    }
+    .block-container {
+        padding-top: 1.5rem;
+        max-width: 1200px;
+    }
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at top, #111827 0, #020617 55%);
         border-right: 1px solid rgba(148,163,184,0.35);
@@ -97,7 +113,10 @@ st.markdown(
         -webkit-background-clip: text;
         color: transparent;
     }
-    .hero-sub { font-size: 14px; color: #9CA3AF; }
+    .hero-sub {
+        font-size: 14px;
+        color: #9CA3AF;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -115,23 +134,18 @@ with col_h1:
 # ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-
     barcode_text = st.text_input("Location Code", value="W13-07-07-01-02")
-
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
     label_height_mm = c2.number_input("Height (mm)", value=60.0)
-
     underline_gap_mm = st.slider("Gap (mm)", 1.0, 10.0, 2.0)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
-
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 # ===== PDF BUILDER =====
 def build_pdf():
@@ -165,7 +179,6 @@ def build_pdf():
     c.setLineWidth(1.2)
     c.setStrokeColor(black)
     c.roundRect(m, m, lw_left, lh_left, 3 * mm)
-
     c.setFillColor(HexColor("#DDDDDD"))
     c.roundRect(
         m + 1 * mm,
@@ -212,7 +225,6 @@ def build_pdf():
         height=bh,
         mask="auto",
     )
-
     line_y = m + rh - bh - 6 * mm
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
@@ -223,18 +235,15 @@ def build_pdf():
 
     # ---------- LOGO (slightly bigger) ----------
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.50      # 50% width logo
-
+    logo_section_w = usable_w * 0.50  # 50% width logo
     logo_x = rx + 4 * mm
-
-    lh_logo = band_h * 0.99               # almost full band height
+    lh_logo = band_h * 0.99  # almost full band height
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio:
         lw_logo = lh_logo * ratio
     else:
         lh_logo = lw_logo / ratio
-
     logo_y = band_y + (band_h - lh_logo) / 2
     c.drawImage(
         logo_ir,
@@ -248,11 +257,9 @@ def build_pdf():
     # ---------- TEXT (centre + bigger) ----------
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
-
-    text_size = int(band_h * 1.0)     # 100% of band height
+    text_size = int(band_h * 1.0)  # 100% of band height
     text_size = min(text_size, 60)
     text_size = max(text_size, 22)
-
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
     while tw > max_tw and text_size > 18:
