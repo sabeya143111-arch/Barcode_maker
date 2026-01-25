@@ -83,14 +83,14 @@ def load_logo():
 
 
 # ===== PAGE CONFIG + GLOBAL CSS =====
-st.set_page_config(page_title="Swag Logo Maker", page_icon="🏷️", layout="wide")
+st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
 
 st.markdown(
     """
     <style>
     .stApp {
         background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
-        color: #E5E7EB;
+        color: #E5E7EB; /* base text color light */
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     }
     .block-container {
@@ -99,16 +99,37 @@ st.markdown(
     }
     [data-testid="stSidebar"] {
         background: radial-gradient(circle at top, #111827 0, #020617 55%);
-        border-right: 1px solid rgba(148,163,184,0.35);
+        border-right: 1px solid rgba(148,163,184,0.5);
+        color: #E5E7EB;
     }
+    /* Streamlit default text inputs / labels */
+    label, .stMarkdown, .stTextInput, .stNumberInput, .stSlider, .stButton {
+        color: #E5E7EB !important;
+    }
+    .stSlider > div > div > div[data-baseweb="slider"] div {
+        color: #E5E7EB !important;
+    }
+    .stTextInput input, .stNumberInput input {
+        color: #F9FAFB !important;
+        background-color: rgba(15,23,42,0.9) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(148,163,184,0.6) !important;
+    }
+    .stButton button {
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }
+
     .glass-card {
-        background: rgba(15,23,42,0.85);
+        background: rgba(15,23,42,0.92);
         border-radius: 16px;
         padding: 16px;
-        border: 1px solid rgba(148,163,184,0.35);
-        box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+        border: 1px solid rgba(148,163,184,0.55);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.7);
         backdrop-filter: blur(18px);
+        color: #E5E7EB;
     }
+
     .hero-wrapper {
         display: flex;
         flex-direction: column;
@@ -116,6 +137,7 @@ st.markdown(
         text-align: center;
         gap: 0.8rem;
         margin-bottom: 1.8rem;
+        color: #E5E7EB;
     }
     .hero-pill {
         display: inline-flex;
@@ -123,18 +145,18 @@ st.markdown(
         gap: 6px;
         padding: 4px 12px;
         border-radius: 999px;
-        background: rgba(15,23,42,0.9);
-        border: 1px solid rgba(248,250,252,0.15);
-        box-shadow: 0 0 0 1px rgba(15,23,42,0.6);
+        background: rgba(15,23,42,0.98);
+        border: 1px solid rgba(248,250,252,0.25);
+        box-shadow: 0 0 0 1px rgba(15,23,42,0.8);
         font-size: 12px;
-        color: #9CA3AF;
+        color: #E5E7EB;
     }
     .hero-dot {
         width: 7px;
         height: 7px;
         border-radius: 999px;
         background: #22C55E;
-        box-shadow: 0 0 12px rgba(34,197,94,0.9);
+        box-shadow: 0 0 14px rgba(34,197,94,1);
         animation: pulse 1.8s ease-out infinite;
     }
     .hero-title {
@@ -145,12 +167,12 @@ st.markdown(
         background: conic-gradient(from 180deg, #F97316, #FACC15, #22C55E, #F97316);
         -webkit-background-clip: text;
         color: transparent;
-        text-shadow: 0 14px 40px rgba(0,0,0,0.75);
+        text-shadow: 0 14px 40px rgba(0,0,0,0.85);
         animation: glowText 3.5s ease-in-out infinite;
     }
     .hero-sub {
         font-size: 14px;
-        color: #9CA3AF;
+        color: #E5E7EB;
         max-width: 520px;
     }
     .hero-sub span {
@@ -159,9 +181,18 @@ st.markdown(
     }
     .hero-bottom-note {
         font-size: 11px;
-        color: #6B7280;
+        color: #D1D5DB;
         text-transform: uppercase;
         letter-spacing: 0.18em;
+    }
+
+    /* Feature card text colors more bright */
+    .glass-card h1, .glass-card h2, .glass-card h3,
+    .glass-card div, .glass-card ul, .glass-card li, .glass-card ol {
+        color: #E5E7EB;
+    }
+    .glass-card small, .glass-card span.subtle {
+        color: #9CA3AF;
     }
 
     @keyframes pulse {
@@ -170,9 +201,9 @@ st.markdown(
         100% { transform: scale(1.6); opacity: 0; }
     }
     @keyframes glowText {
-        0% { text-shadow: 0 10px 25px rgba(0,0,0,0.7); }
-        50% { text-shadow: 0 14px 45px rgba(249,115,22,0.4); }
-        100% { text-shadow: 0 10px 25px rgba(0,0,0,0.7); }
+        0% { text-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+        50% { text-shadow: 0 14px 45px rgba(249,115,22,0.5); }
+        100% { text-shadow: 0 10px 25px rgba(0,0,0,0.8); }
     }
     </style>
     """,
@@ -202,6 +233,89 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ===== FEATURE + STATS SECTION =====
+col_left, col_right = st.columns([2, 1.4])
+
+with col_left:
+    st.markdown(
+        """
+        <div class="glass-card" style="margin-bottom: 1rem;">
+            <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:6px; color:#9CA3AF;">
+                WHY SWAG BARCODE MAKER
+            </div>
+            <div style="font-size:18px; font-weight:600; margin-bottom:10px; color:#F9FAFB;">
+                Pixel‑perfect warehouse labels, without touching Illustrator.
+            </div>
+            <ul style="font-size:13px; color:#E5E7EB; line-height:1.6; margin-left:-18px; list-style:none;">
+                <li>• Odoo‑ready Code128 barcodes with clean human‑readable text.</li>
+                <li>• Auto logo placement with transparent PNG support.</li>
+                <li>• Flexible label size controls in millimetres (A4, shelf tags, bins, pallets).</li>
+                <li>• High‑DPI PDF export for thermal & laser printers.</li>
+                <li>• Built for multi‑warehouse ops: fast typing, instant download.</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="glass-card" style="display:flex; gap:14px; align-items:stretch;">
+            <div style="flex:1; border-right:1px solid rgba(55,65,81,0.7); padding-right:10px;">
+                <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:4px;">
+                    HOW IT WORKS
+                </div>
+                <ol style="font-size:12px; color:#E5E7EB; padding-left:16px; margin:0;">
+                    <li>Type or paste your location code.</li>
+                    <li>Adjust label size, bar height & DPI.</li>
+                    <li>Click Download to get a print‑ready PDF.</li>
+                </ol>
+            </div>
+            <div style="flex:1; padding-left:4px;">
+                <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:4px;">
+                    PERFECT FOR
+                </div>
+                <ul style="font-size:12px; color:#E5E7EB; padding-left:16px; margin:0;">
+                    <li>Racks & aisles</li>
+                    <li>Bin locations</li>
+                    <li>Picking faces</li>
+                    <li>Bulk storage zones</li>
+                </ul>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+with col_right:
+    st.markdown(
+        """
+        <div class="glass-card" style="text-align:left;">
+            <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:8px;">
+                WAREHOUSE STATS SNAPSHOT
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">600+</div>
+                    <div style="font-size:11px; color:#D1D5DB;">Locations labelled per hour</div>
+                </div>
+                <div>
+                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">4x</div>
+                    <div style="font-size:11px; color:#D1D5DB;">Faster than manual label design</div>
+                </div>
+                <div>
+                    <div style="font-size:22px; font-weight:700; color:#F9FAFB;">99.9%</div>
+                    <div style="font-size:11px; color:#D1D5DB;">Scan success on Code128 barcodes</div>
+                </div>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:#9CA3AF;">
+                Designed for Swag warehouse & Odoo inventory workflows.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # ===== SIDEBAR =====
 with st.sidebar:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
@@ -216,7 +330,7 @@ with st.sidebar:
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markmarkdown("</div>", unsafe_allow_html=True)
 
 # ===== PDF BUILDER =====
 def build_pdf():
