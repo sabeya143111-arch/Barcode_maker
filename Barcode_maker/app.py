@@ -1,6 +1,6 @@
 import streamlit as st
 from pathlib import Path
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import black, HexColor
@@ -90,7 +90,7 @@ st.markdown(
     <style>
     .stApp {
         background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
-        color: #E5E7EB; /* base text color light */
+        color: #E5E7EB;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     }
     .block-container {
@@ -186,7 +186,6 @@ st.markdown(
         letter-spacing: 0.18em;
     }
 
-    /* Feature card text colors more bright */
     .glass-card h1, .glass-card h2, .glass-card h3,
     .glass-card div, .glass-card ul, .glass-card li, .glass-card ol {
         color: #E5E7EB;
@@ -330,7 +329,7 @@ with st.sidebar:
     st.markdown("---")
     preview_btn = st.button("👀 Live Preview")
     download_btn = st.button("⬇️ Download PDF", type="primary")
-    st.markmarkdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ===== PDF BUILDER =====
 def build_pdf():
@@ -420,9 +419,9 @@ def build_pdf():
 
     # ---------- LOGO (slightly bigger) ----------
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.50  # 50% width logo
+    logo_section_w = usable_w * 0.50
     logo_x = rx + 4 * mm
-    lh_logo = band_h * 0.99  # almost full band height
+    lh_logo = band_h * 0.99
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio:
@@ -442,7 +441,7 @@ def build_pdf():
     # ---------- TEXT (centre + bigger) ----------
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
-    text_size = int(band_h * 1.0)  # 100% of band height
+    text_size = int(band_h * 1.0)
     text_size = min(text_size, 60)
     text_size = max(text_size, 22)
     c.setFont("Helvetica-Bold", text_size)
