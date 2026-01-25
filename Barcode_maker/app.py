@@ -244,23 +244,24 @@ def build_pdf():
         mask="auto",
     )
 
-    # TEXT – remaining narrow area
+    # TEXT – centre + bigger
     text_start_x = logo_x + logo_section_w + 0.5 * mm
     max_tw = rx + rw - text_start_x - 2 * mm
 
-    text_size = int(band_h * 0.8)
-    text_size = min(text_size, 48)
-    text_size = max(text_size, 18)
+    text_size = int(band_h * 0.9)   # bada base size
+    text_size = min(text_size, 56)
+    text_size = max(text_size, 20)
 
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-    while tw > max_tw and text_size > 14:
+    while tw > max_tw and text_size > 16:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
     text_y = band_y + band_h / 2 - text_size / 3
-    c.drawCentredString(text_start_x + max_tw / 2, text_y, barcode_text)
+    text_cx = text_start_x + max_tw / 2
+    c.drawCentredString(text_cx, text_y, barcode_text)
 
     c.showPage()
     c.save()
