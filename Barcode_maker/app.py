@@ -213,7 +213,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ===== HERO HEADER (CENTERED, ANIMATED) =====
+# ===== HERO HEADER =====
 st.markdown(
     """
     <div class="hero-wrapper">
@@ -236,7 +236,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ===== LUX FEATURE GRID =====
+# ===== FEATURE GRID (yahi block tumne bheja tha, ab sahi wrap kiya) =====
 st.markdown(
     """
     <div style="
