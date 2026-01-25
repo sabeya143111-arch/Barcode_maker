@@ -221,12 +221,13 @@ def build_pdf():
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # LOGO – maximum size
+    # ---------- LOGO (slightly bigger) ----------
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.55   # > half width logo ke liye
+    logo_section_w = usable_w * 0.50      # 50% width logo
+
     logo_x = rx + 4 * mm
 
-    lh_logo = band_h * 0.995          # almost full band height
+    lh_logo = band_h * 0.99               # almost full band height
     lw_logo = lh_logo
     ratio = logo_img.width / logo_img.height
     if lw_logo / lh_logo > ratio:
@@ -244,17 +245,17 @@ def build_pdf():
         mask="auto",
     )
 
-    # TEXT – centre + bigger
-    text_start_x = logo_x + logo_section_w + 0.5 * mm
-    max_tw = rx + rw - text_start_x - 2 * mm
+    # ---------- TEXT (centre + bigger) ----------
+    text_start_x = logo_x + logo_section_w + 1 * mm
+    max_tw = rx + rw - text_start_x - 3 * mm
 
-    text_size = int(band_h * 0.9)   # bada base size
-    text_size = min(text_size, 56)
-    text_size = max(text_size, 20)
+    text_size = int(band_h * 1.0)     # 100% of band height
+    text_size = min(text_size, 60)
+    text_size = max(text_size, 22)
 
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-    while tw > max_tw and text_size > 16:
+    while tw > max_tw and text_size > 18:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
