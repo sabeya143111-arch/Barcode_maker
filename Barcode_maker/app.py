@@ -46,6 +46,7 @@ def load_logo():
     if "img" in _logo_cache:
         return _logo_cache["img"], _logo_cache["ir"]
 
+    # 1) Local logo
     try:
         if LOCAL_LOGO_PATH.exists():
             raw = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -59,6 +60,7 @@ def load_logo():
     except Exception:
         pass
 
+    # 2) GitHub fallback
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -76,10 +78,13 @@ def load_logo():
         return None, None
 
 
-# ===== SIMPLE PAGE CONFIG =====
+# ===== SIMPLE PAGE CONFIG / HERO =====
 st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
-st.title("Swag Barcode Maker")
-st.write("Enter location and label dimensions, then generate a PDF with Code128 barcode.")
+
+st.title("SWAG BARCODE MAKER")
+st.write(
+    "Design premium warehouse location labels with logo + Code128 barcode and export as a high‑resolution PDF."
+)
 
 
 # ===== SIDEBAR =====
