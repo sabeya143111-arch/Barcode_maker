@@ -18,12 +18,10 @@ GITHUB_LOGO_URL = (
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
 )
 
-# ---- logo cache to prevent garbage collection ----
 _logo_cache = {}
 
 
 def _crop_alpha(img: Image.Image) -> Image.Image:
-    """Transparent borders hata ke tight crop karta hai."""
     if img.mode != "RGBA":
         img = img.convert("RGBA")
     bg = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -35,7 +33,6 @@ def _crop_alpha(img: Image.Image) -> Image.Image:
 
 
 def _make_square_rgba(img: Image.Image) -> Image.Image:
-    """Transparent PNG ko pehle crop, fir square canvas pe centre karta hai."""
     img = _crop_alpha(img)
     side = max(img.width, img.height)
     canvas_img = Image.new("RGBA", (side, side), (255, 255, 255, 0))
@@ -46,11 +43,9 @@ def _make_square_rgba(img: Image.Image) -> Image.Image:
 
 
 def load_logo():
-    """Pehle local logo, phir GitHub fallback; buffers ko cache mein rakhta hai."""
     if "img" in _logo_cache:
         return _logo_cache["img"], _logo_cache["ir"]
 
-    # 1) Local logo check
     try:
         if LOCAL_LOGO_PATH.exists():
             raw = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -64,7 +59,6 @@ def load_logo():
     except Exception:
         pass
 
-    # 2) GitHub logo fallback
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -82,269 +76,15 @@ def load_logo():
         return None, None
 
 
-# ===== PAGE CONFIG + GLOBAL CSS =====
+# ===== SIMPLE PAGE CONFIG =====
 st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
+st.title("Swag Barcode Maker")
+st.write("Enter location and label dimensions, then generate a PDF with Code128 barcode.")
 
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
-        color: #E5E7EB;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-    }
-    .block-container {
-        padding-top: 2.5rem;
-        max-width: 1000px;
-    }
-    [data-testid="stSidebar"] {
-        background: radial-gradient(circle at top, #111827 0, #020617 55%);
-        border-right: 1px solid rgba(148,163,184,0.5);
-        color: #E5E7EB;
-    }
-    label, .stMarkdown, .stTextInput, .stNumberInput, .stSlider, .stButton {
-        color: #E5E7EB !important;
-    }
-    .stSlider > div > div > div[data-baseweb="slider"] div {
-        color: #E5E7EB !important;
-    }
-    .stTextInput input, .stNumberInput input {
-        color: #F9FAFB !important;
-        background-color: rgba(15,23,42,0.9) !important;
-        border-radius: 10px !important;
-        border: 1px solid rgba(148,163,184,0.6) !important;
-    }
-    .stButton button {
-        color: #0F172A !important;
-        font-weight: 600 !important;
-    }
-
-    .glass-card {
-        background: rgba(15,23,42,0.92);
-        border-radius: 16px;
-        padding: 16px;
-        border: 1px solid rgba(148,163,184,0.55);
-        box-shadow: 0 18px 40px rgba(0,0,0,0.7);
-        backdrop-filter: blur(18px);
-        color: #E5E7EB;
-    }
-
-    .hero-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 0.8rem;
-        margin-bottom: 1.8rem;
-        color: #E5E7EB;
-    }
-    .hero-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        border-radius: 999px;
-        background: rgba(15,23,42,0.98);
-        border: 1px solid rgba(248,250,252,0.25);
-        box-shadow: 0 0 0 1px rgba(15,23,42,0.8);
-        font-size: 12px;
-        color: #E5E7EB;
-    }
-    .hero-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 999px;
-        background: #22C55E;
-        box-shadow: 0 0 14px rgba(34,197,94,1);
-        animation: pulse 1.8s ease-out infinite;
-    }
-    .hero-title {
-        font-size: 52px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        background: conic-gradient(from 180deg, #F97316, #FACC15, #22C55E, #F97316);
-        -webkit-background-clip: text;
-        color: transparent;
-        text-shadow: 0 14px 40px rgba(0,0,0,0.85);
-        animation: glowText 3.5s ease-in-out infinite;
-    }
-    .hero-sub {
-        font-size: 14px;
-        color: #E5E7EB;
-        max-width: 520px;
-    }
-    .hero-sub span {
-        color: #FACC15;
-        font-weight: 600;
-    }
-    .hero-bottom-note {
-        font-size: 11px;
-        color: #D1D5DB;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-    }
-
-    .glass-card h1, .glass-card h2, .glass-card h3,
-    .glass-card div, .glass-card ul, .glass-card li, .glass-card ol {
-        color: #E5E7EB;
-    }
-    .glass-card small, .glass-card span.subtle {
-        color: #9CA3AF;
-    }
-
-    @keyframes pulse {
-        0% { transform: scale(1); opacity: 1; }
-        60% { transform: scale(1.6); opacity: 0; }
-        100% { transform: scale(1.6); opacity: 0; }
-    }
-    @keyframes glowText {
-        0% { text-shadow: 0 10px 25px rgba(0,0,0,0.8); }
-        50% { text-shadow: 0 14px 45px rgba(249,115,22,0.5); }
-        100% { text-shadow: 0 10px 25px rgba(0,0,0,0.8); }
-    }
-    @keyframes borderGlow {
-        0% { opacity: 0.65; box-shadow: 0 0 12px rgba(250,204,21,0.2); }
-        50% { opacity: 1; box-shadow: 0 0 30px rgba(56,189,248,0.35); }
-        100% { opacity: 0.65; box-shadow: 0 0 12px rgba(250,204,21,0.2); }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ===== HERO HEADER =====
-st.markdown(
-    """
-    <div class="hero-wrapper">
-        <div class="hero-pill">
-            <div class="hero-dot"></div>
-            <span>Instant warehouse labels • Made for Odoo</span>
-        </div>
-        <div class="hero-title">
-            SWAG BARCODE MAKER
-        </div>
-        <div class="hero-sub">
-            Design <span>premium location labels</span> with logo + Code128 barcode,
-            export as crisp high‑res PDFs ready for warehouse printing.
-        </div>
-        <div class="hero-bottom-note">
-            TYPE LOCATION • TUNE SIZE • DOWNLOAD PDF
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ===== FEATURE GRID =====
-st.markdown(
-    """
-    <div style="
-        margin-top: 0.8rem;
-        margin-bottom: 1.4rem;
-        padding: 1px;
-        border-radius: 18px;
-        background: linear-gradient(120deg, rgba(250,204,21,0.25), rgba(56,189,248,0.1), rgba(249,115,22,0.25));
-        animation: borderGlow 4s ease-in-out infinite;
-    ">
-      <div class="glass-card" style="border-radius: 16px; background: radial-gradient(circle at top left, rgba(15,23,42,0.98), rgba(15,23,42,0.92));">
-        <div style="display:flex; flex-wrap:wrap; gap:18px; align-items:stretch;">
-          
-          <!-- Left big value prop -->
-          <div style="flex:1.3; min-width:230px; display:flex; flex-direction:column; gap:10px;">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.18em; color:#9CA3AF;">
-              BUILT FOR BUSY WAREHOUSES
-            </div>
-            <div style="font-size:20px; font-weight:650; color:#F9FAFB;">
-              One clean tool to generate every location label your pickers will ever scan.
-            </div>
-            <div style="display:flex; gap:16px; margin-top:6px;">
-              <div style="font-size:24px; font-weight:700; color:#FACC15;">60s</div>
-              <div style="font-size:12px; color:#E5E7EB;">
-                From typing a new rack code<br>to downloading a print‑ready PDF.
-              </div>
-            </div>
-            <div style="margin-top:6px; font-size:11px; color:#9CA3AF;">
-              Optimised for barcode scanners, forklifts & real‑world warehouse chaos.
-            </div>
-          </div>
-
-          <!-- Middle feature pills -->
-          <div style="flex:1; min-width:220px; display:flex; flex-direction:column; gap:10px;">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.16em; color:#9CA3AF;">
-              SIGNATURE FEATURES
-            </div>
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
-              <div style="
-                  padding:8px 10px;
-                  border-radius:999px;
-                  background:rgba(15,23,42,0.95);
-                  border:1px solid rgba(148,163,184,0.6);
-                  display:flex; align-items:center; gap:8px;
-              ">
-                <span style="width:7px; height:7px; border-radius:999px; background:#FACC15; box-shadow:0 0 10px rgba(250,204,21,1);"></span>
-                <span>Smart spacing: text + logo + barcode always perfectly balanced.</span>
-              </div>
-              <div style="
-                  padding:8px 10px;
-                  border-radius:999px;
-                  background:rgba(15,23,42,0.95);
-                  border:1px solid rgba(148,163,184,0.45);
-                  display:flex; align-items:center; gap:8px;
-              ">
-                <span style="width:7px; height:7px; border-radius:999px; background:#38BDF8; box-shadow:0 0 10px rgba(56,189,248,1);"></span>
-                <span>High‑DPI export tuned for thermal & laser label printers.</span>
-              </div>
-              <div style="
-                  padding:8px 10px;
-                  border-radius:999px;
-                  background:rgba(15,23,42,0.95);
-                  border:1px solid rgba(148,163,184,0.45);
-                  display:flex; align-items:center; gap:8px;
-              ">
-                <span style="width:7px; height:7px; border-radius:999px; background:#22C55E; box-shadow:0 0 10px rgba(34,197,94,1);"></span>
-                <span>Odoo‑ready Code128 barcodes that scan perfectly first time.</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right mini cards -->
-          <div style="flex:0.9; min-width:210px; display:flex; flex-direction:column; gap:10px;">
-            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.16em; color:#9CA3AF;">
-              TUNED CONTROLS
-            </div>
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
-              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.6);">
-                <div style="font-size:11px; color:#9CA3AF;">LABEL CANVAS</div>
-                <div style="font-size:13px; color:#E5E7EB;">
-                  Width / height in millimetres for A4 sheets, rack strips, bin labels & pallet tags.
-                </div>
-              </div>
-              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.45);">
-                <div style="font-size:11px; color:#9CA3AF;">BARCODE LOOK</div>
-                <div style="font-size:13px; color:#E5E7EB;">
-                  Control bar height + thickness so every scanner in the building reads it clean.
-                </div>
-              </div>
-              <div style="padding:10px; border-radius:12px; background:rgba(15,23,42,0.96); border:1px solid rgba(148,163,184,0.45);">
-                <div style="font-size:11px; color:#9CA3AF;">PRINT QUALITY</div>
-                <div style="font-size:13px; color:#E5E7EB;">
-                  DPI slider for crisp lines on both economy and high‑end printers.
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
 # ===== SIDEBAR =====
 with st.sidebar:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.header("Label settings")
     barcode_text = st.text_input("Location Code", value="W13-07-07-01-02")
     c1, c2 = st.columns(2)
     label_width_mm = c1.number_input("Width (mm)", value=210.0)
@@ -354,9 +94,8 @@ with st.sidebar:
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
     st.markdown("---")
-    preview_btn = st.button("👀 Live Preview")
-    download_btn = st.button("⬇️ Download PDF", type="primary")
-    st.markdown("</div>", unsafe_allow_html=True)
+    preview_btn = st.button("👀 Generate Preview / PDF")
+    download_btn = preview_btn  # same trigger
 
 
 # ===== PDF BUILDER =====
@@ -441,11 +180,10 @@ def build_pdf():
     c.setLineWidth(2)
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
 
-    # ===== BOTTOM BAND (LOGO + TEXT) =====
+    # BOTTOM BAND (LOGO + TEXT)
     band_y = m + 4 * mm
     band_h = line_y - band_y - 2 * mm
 
-    # LOGO
     usable_w = rw - 8 * mm
     logo_section_w = usable_w * 0.50
     logo_x = rx + 4 * mm
@@ -466,7 +204,6 @@ def build_pdf():
         mask="auto",
     )
 
-    # TEXT
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
     text_size = int(band_h * 1.0)
@@ -490,7 +227,7 @@ def build_pdf():
 
 
 # ===== MAIN APP =====
-if preview_btn or download_btn:
+if download_btn:
     try:
         with st.spinner("Generating PDF..."):
             pdf_data = build_pdf()
