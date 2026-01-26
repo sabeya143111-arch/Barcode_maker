@@ -35,19 +35,16 @@ def load_css():
         font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Main content width + padding (text fully visible) */
     .block-container {
         max-width: 1200px !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
     }
 
-    /* Remove Streamlit default padding top */
     section.main > div {
         padding-top: 1rem;
     }
 
-    /* Top title area */
     .lux-header {
         padding: 0.7rem 1.5rem 1.5rem 1.5rem;
         border-radius: 18px;
@@ -60,7 +57,6 @@ def load_css():
         overflow: hidden;
     }
 
-    /* Luxury glow line */
     .lux-header::before {
         content: "";
         position: absolute;
@@ -74,7 +70,7 @@ def load_css():
             rgba(255, 215, 0, 0.4) 40%,
             rgba(255, 215, 0, 0.0) 80%
         );
-        transform: translateX(-100%) rotate(8deg);
+        transform: translateX(-120%) rotate(8deg);
         animation: lux-sweep 9s infinite;
         pointer-events: none;
     }
@@ -132,7 +128,6 @@ def load_css():
         color: #ffffff;
     }
 
-    /* Tabs styling */
     button[data-baseweb="tab"] {
         border-radius: 999px !important;
         padding: 0.35rem 1.2rem !important;
@@ -159,7 +154,6 @@ def load_css():
             0 14px 30px rgba(0, 0, 0, 0.9);
     }
 
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #080914 0%, #090b12 35%, #050509 100%);
         border-right: 1px solid rgba(255, 215, 0, 0.14);
@@ -167,14 +161,13 @@ def load_css():
         color: #ffffff;
     }
 
-    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
     section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] label {
         color: #ffffff;
     }
 
-    /* Inputs / sliders / checkboxes */
     .stNumberInput > div > div > input,
     .stTextInput > div > div > input,
     textarea {
@@ -193,7 +186,6 @@ def load_css():
             0 0 0 3px rgba(255, 215, 0, 0.15);
     }
 
-    /* Textarea full visible text */
     textarea {
         border-radius: 14px !important;
         background: rgba(10, 12, 22, 0.94) !important;
@@ -204,7 +196,6 @@ def load_css():
         overflow-wrap: break-word !important;
     }
 
-    /* Sliders */
     .stSlider > div > div > div[data-baseweb="slider"] > div {
         background: rgba(47, 52, 72, 0.95) !important;
     }
@@ -213,7 +204,6 @@ def load_css():
         box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.9);
     }
 
-    /* Buttons */
     .stButton > button {
         border-radius: 999px;
         padding: 0.45rem 1.1rem;
@@ -244,7 +234,6 @@ def load_css():
             0 0 0 1px rgba(255, 215, 0, 0.8);
     }
 
-    /* Info / success / error boxes */
     .stAlert {
         border-radius: 14px !important;
         border: 1px solid rgba(255, 215, 0, 0.35) !important;
@@ -252,7 +241,6 @@ def load_css():
         color: #ffffff !important;
     }
 
-    /* Table / Dataframe */
     .stDataFrame, .stTable {
         border-radius: 14px;
         overflow: hidden;
@@ -261,7 +249,6 @@ def load_css():
         color: #ffffff;
     }
 
-    /* Generic labels / text inside widgets */
     [data-testid="stWidgetLabel"] > label,
     [data-testid="stWidgetLabel"] p,
     label {
@@ -297,7 +284,6 @@ def load_logo():
     if "img" in _logo_cache:
         return _logo_cache["img"], _logo_cache["ir"]
 
-    # 1) Local logo
     try:
         if LOCAL_LOGO_PATH.exists():
             raw = Image.open(LOCAL_LOGO_PATH).convert("RGBA")
@@ -311,7 +297,6 @@ def load_logo():
     except Exception:
         pass
 
-    # 2) GitHub fallback
     try:
         response = urlopen(GITHUB_LOGO_URL, timeout=10)
         data = response.read()
@@ -338,6 +323,8 @@ def build_pdf(
     module_width,
     dpi_value,
     include_logo: bool = True,
+    product_name: str = "",
+    sku: str = "",
 ):
     logo_img, logo_ir = (None, None)
     if include_logo:
@@ -345,7 +332,6 @@ def build_pdf(
         if not logo_ir:
             include_logo = False
 
-    # BARCODE
     bbuf = io.BytesIO()
     code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
     code128.render(
@@ -359,7 +345,6 @@ def build_pdf(
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
-    # CANVAS
     lw, lh = label_width_mm * mm, label_height_mm * mm
     pdf_buf = io.BytesIO()
     c = canvas.Canvas(pdf_buf, pagesize=(lw, lh))
@@ -450,7 +435,7 @@ def build_pdf(
         logo_section_w = 0
         logo_x = rx + 4 * mm
 
-    # TEXT (center, red, auto size)
+    # MAIN RED TEXT
     text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
     text_size = int(band_h * 1.05)
@@ -469,6 +454,14 @@ def build_pdf(
     c.drawCentredString(text_cx, text_y, barcode_text)
     c.setFillColor(black)
 
+    # EXTRA SMALL TEXT (PRODUCT NAME + SKU)
+    extra = " • ".join(x for x in [product_name.strip(), sku.strip()] if x)
+    if extra:
+        small_font = 10
+        c.setFont("Helvetica", small_font)
+        c.setFillColor(black)
+        c.drawCentredString(text_cx, text_y - text_size * 0.8, extra)
+
     c.showPage()
     c.save()
     pdf_buf.seek(0)
@@ -481,7 +474,7 @@ st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout=
 # Load global CSS theme
 load_css()
 
-# ===== CUSTOM LUXURY HEADER =====
+# ===== HEADER =====
 st.markdown(
     """
     <div class="lux-header">
@@ -509,25 +502,45 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.write("")  # gap
+st.write("")
 
-# ===== TABS: SINGLE vs BATCH =====
+# ===== TABS =====
 tab1, tab2 = st.tabs(["📋 Single Label", "📦 Batch Labels"])
 
 # ===== SIDEBAR SETTINGS =====
 with st.sidebar:
     st.header("Label Settings")
-    label_width_mm = st.number_input("Width (mm)", value=210.0, min_value=50.0, max_value=500.0)
-    label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0, max_value=300.0)
+
+    preset = st.selectbox(
+        "Preset size",
+        ["Custom", "Small Shelf (80x40)", "Box (100x60)", "Pallet (210x60)"],
+    )
+
+    # defaults
+    width_default = 210.0
+    height_default = 60.0
+
+    if preset == "Small Shelf (80x40)":
+        width_default, height_default = 80.0, 40.0
+    elif preset == "Box (100x60)":
+        width_default, height_default = 100.0, 60.0
+    elif preset == "Pallet (210x60)":
+        width_default, height_default = 210.0, 60.0
+
+    label_width_mm = st.number_input("Width (mm)", value=width_default, min_value=50.0, max_value=500.0)
+    label_height_mm = st.number_input("Height (mm)", value=height_default, min_value=20.0, max_value=300.0)
     module_height = st.slider("Bar Height", 5, 40, 18)
     module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
     dpi_value = st.slider("DPI", 300, 1200, 600, 100)
     include_logo_global = st.checkbox("Include Logo on labels", value=True)
 
-# ===== TAB 1: SINGLE LABEL =====
+# ===== TAB 1: SINGLE =====
 with tab1:
     st.subheader("Generate Single Barcode Label")
+
     barcode_text = st.text_input("Location Code", value="W102-07-03-01-01", key="single_code")
+    product_name = st.text_input("Product Name (optional)", value="", key="single_product")
+    sku = st.text_input("SKU (optional)", value="", key="single_sku")
 
     if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True):
         try:
@@ -540,6 +553,8 @@ with tab1:
                     module_width,
                     dpi_value,
                     include_logo=include_logo_global,
+                    product_name=product_name,
+                    sku=sku,
                 )
             st.success("✅ PDF Generated!")
 
@@ -557,10 +572,14 @@ with tab1:
         except Exception as e:
             st.error(f"❌ Error: {e}")
 
-# ===== TAB 2: BATCH LABELS =====
+# ===== TAB 2: BATCH =====
 with tab2:
     st.subheader("Generate Multiple Barcode Labels (Batch)")
     st.write("Paste location codes (one per line) or upload CSV/Excel file.")
+
+    batch_product_name = st.text_input("Batch Product Name (optional, same for all)", value="", key="batch_product")
+    batch_sku = st.text_input("Batch SKU (optional, same for all)", value="", key="batch_sku")
+    prefix = st.text_input("Optional prefix to add if missing (e.g. W102/)", value="", key="batch_prefix")
 
     input_method = st.radio("Input Method:", ["📝 Text Area", "📄 CSV/Excel File"], horizontal=True)
 
@@ -574,7 +593,13 @@ with tab2:
             key="batch_codes",
         )
         if codes_text:
-            barcode_list = [code.strip() for code in codes_text.split("\n") if code.strip()]
+            for line in codes_text.split("\n"):
+                code = line.strip()
+                if not code:
+                    continue
+                if prefix and not code.startswith(prefix):
+                    code = prefix + code
+                barcode_list.append(code)
     else:
         uploaded_file = st.file_uploader(
             "Upload CSV or Excel file", type=["csv", "xlsx", "xls"], key="file_upload"
@@ -585,8 +610,14 @@ with tab2:
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
-                barcode_list = df.iloc[:, 0].astype(str).tolist()
-                barcode_list = [code.strip() for code in barcode_list if code.strip()]
+                raw_codes = df.iloc[:, 0].astype(str).tolist()
+                for code in raw_codes:
+                    code = code.strip()
+                    if not code:
+                        continue
+                    if prefix and not code.startswith(prefix):
+                        code = prefix + code
+                    barcode_list.append(code)
             except Exception as e:
                 st.error(f"❌ Error reading file: {e}")
 
@@ -611,6 +642,8 @@ with tab2:
                                 module_width,
                                 dpi_value,
                                 include_logo=include_logo_global,
+                                product_name=batch_product_name,
+                                sku=batch_sku,
                             )
                             safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
                             if not safe_name:
