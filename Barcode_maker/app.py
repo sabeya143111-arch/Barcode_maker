@@ -35,6 +35,13 @@ def load_css():
         font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
+    /* Main content width + padding (text fully visible) */
+    .block-container {
+        max-width: 1200px !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
+
     /* Remove Streamlit default padding top */
     section.main > div {
         padding-top: 1rem;
@@ -107,6 +114,8 @@ def load_css():
         font-size: 0.9rem;
         color: #c8cfdd;
         max-width: 560px;
+        /* yahan koi max-height / overflow hidden nahi rakha,
+           taaki sara text dikhe */
     }
 
     .lux-chip-row {
@@ -176,12 +185,22 @@ def load_css():
     }
 
     .stNumberInput > div > div > input:focus,
-    .stTextInput > div > div > input:focus,
-    textarea:focus {
+    .stTextInput > div > div > input:focus {
         border-color: rgba(255, 215, 0, 0.9) !important;
         box-shadow:
             0 0 0 1px rgba(255, 215, 0, 0.9),
             0 0 0 3px rgba(255, 215, 0, 0.15);
+    }
+
+    /* Textarea full visible text */
+    textarea {
+        border-radius: 14px !important;
+        background: rgba(10, 12, 22, 0.94) !important;
+        border: 1px solid rgba(255, 215, 0, 0.35) !important;
+        color: #f3f3f3 !important;
+        width: 100% !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
     }
 
     /* Sliders */
@@ -230,13 +249,6 @@ def load_css():
         border: 1px solid rgba(255, 215, 0, 0.35) !important;
         background: radial-gradient(circle at top left, rgba(255, 215, 0, 0.19), rgba(14, 18, 36, 0.96)) !important;
         color: #f4f1e1 !important;
-    }
-
-    /* Text area */
-    textarea {
-        border-radius: 14px !important;
-        background: rgba(10, 12, 22, 0.94) !important;
-        border: 1px solid rgba(255, 215, 0, 0.35) !important;
     }
 
     /* Table / Dataframe */
@@ -488,7 +500,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.write("")  # small gap
+st.write("")  # gap
 
 # ===== TABS: SINGLE vs BATCH =====
 tab1, tab2 = st.tabs(["📋 Single Label", "📦 Batch Labels"])
