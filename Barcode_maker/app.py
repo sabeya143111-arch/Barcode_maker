@@ -31,7 +31,7 @@ def load_css():
     /* Page background */
     .stApp {
         background: radial-gradient(circle at top left, #1c1f2b, #050609);
-        color: #f5f5f5;
+        color: #ffffff;
         font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
@@ -91,7 +91,7 @@ def load_css():
         font-weight: 700;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #f5f5f5;
+        color: #ffffff;
         text-shadow: 0 0 16px rgba(0, 0, 0, 0.85);
     }
 
@@ -106,16 +106,14 @@ def load_css():
         font-size: 0.7rem;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-        color: #f6e7b8;
+        color: #ffffff;
     }
 
     .lux-subtitle {
         margin-top: 0.5rem;
         font-size: 0.9rem;
-        color: #c8cfdd;
+        color: #ffffff;
         max-width: 560px;
-        /* yahan koi max-height / overflow hidden nahi rakha,
-           taaki sara text dikhe */
     }
 
     .lux-chip-row {
@@ -131,7 +129,7 @@ def load_css():
         border-radius: 999px;
         background: rgba(7, 11, 25, 0.96);
         border: 1px solid rgba(134, 142, 160, 0.5);
-        color: #d0d4e2;
+        color: #ffffff;
     }
 
     /* Tabs styling */
@@ -140,7 +138,7 @@ def load_css():
         padding: 0.35rem 1.2rem !important;
         margin-right: 0.2rem;
         background: rgba(13, 17, 31, 0.92);
-        color: #d8deef !important;
+        color: #ffffff !important;
         border: 1px solid rgba(255, 215, 0, 0.15);
         transition: all 0.25s ease-out;
         font-size: 0.82rem;
@@ -166,11 +164,14 @@ def load_css():
         background: linear-gradient(180deg, #080914 0%, #090b12 35%, #050509 100%);
         border-right: 1px solid rgba(255, 215, 0, 0.14);
         box-shadow: 6px 0 25px rgba(0, 0, 0, 0.75);
+        color: #ffffff;
     }
 
     section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3 {
-        color: #f7f0d7;
+    section[data-testid="stSidebar"] h3,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] label {
+        color: #ffffff;
     }
 
     /* Inputs / sliders / checkboxes */
@@ -178,7 +179,7 @@ def load_css():
     .stTextInput > div > div > input,
     textarea {
         background: rgba(10, 12, 22, 0.95) !important;
-        color: #f3f3f3 !important;
+        color: #ffffff !important;
         border-radius: 999px !important;
         border: 1px solid rgba(255, 215, 0, 0.35) !important;
         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.9);
@@ -197,7 +198,7 @@ def load_css():
         border-radius: 14px !important;
         background: rgba(10, 12, 22, 0.94) !important;
         border: 1px solid rgba(255, 215, 0, 0.35) !important;
-        color: #f3f3f3 !important;
+        color: #ffffff !important;
         width: 100% !important;
         white-space: pre-wrap !important;
         overflow-wrap: break-word !important;
@@ -248,7 +249,7 @@ def load_css():
         border-radius: 14px !important;
         border: 1px solid rgba(255, 215, 0, 0.35) !important;
         background: radial-gradient(circle at top left, rgba(255, 215, 0, 0.19), rgba(14, 18, 36, 0.96)) !important;
-        color: #f4f1e1 !important;
+        color: #ffffff !important;
     }
 
     /* Table / Dataframe */
@@ -257,6 +258,14 @@ def load_css():
         overflow: hidden;
         border: 1px solid rgba(255, 215, 0, 0.16);
         background: rgba(12, 14, 26, 0.98);
+        color: #ffffff;
+    }
+
+    /* Generic labels / text inside widgets */
+    [data-testid="stWidgetLabel"] > label,
+    [data-testid="stWidgetLabel"] p,
+    label {
+        color: #ffffff !important;
     }
     </style>
     """
