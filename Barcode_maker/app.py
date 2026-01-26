@@ -70,7 +70,7 @@ def load_logo():
         buf = io.BytesIO(data)
         buf.seek(0)
         raw = Image.open(buf).convert("RGBA")
-        img = _make_square_rgga(raw)
+        img = _make_square_rgba(raw)
         buf2 = io.BytesIO()
         img.save(buf2, format="PNG")
         buf2.seek(0)
@@ -188,7 +188,7 @@ def build_pdf(barcode_text: str) -> bytes:
     band_h = line_y - band_y - 2 * mm
 
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.50
+    logo_section_w = usable_w * 0.40   # thoda kam logo area, zyada text area
     logo_x = rx + 4 * mm
     lh_logo = band_h * 0.99
     lw_logo = lh_logo
@@ -219,9 +219,13 @@ def build_pdf(barcode_text: str) -> bytes:
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
+    # TEXT CENTER + RED
     text_y = band_y + band_h / 2 - text_size / 3
-    text_cx = text_start_x + max_tw / 2
+    text_cx = rx + rw / 2   # pure right box ka center
+
+    c.setFillColor(HexColor("#FF0000"))   # red
     c.drawCentredString(text_cx, text_y, barcode_text)
+    c.setFillColor(black)
 
     c.showPage()
     c.save()
