@@ -9,6 +9,7 @@ import io
 import barcode
 from barcode.writer import ImageWriter
 from urllib.request import urlopen
+import re  # <- NEW: filename safe banane ke liye
 
 # ===== PATH / LOGO SETTINGS =====
 BASE_DIR = Path(__file__).resolve().parent
@@ -237,10 +238,16 @@ if download_btn:
         with st.spinner("Generating PDF..."):
             pdf_data = build_pdf()
         st.success("Success!")
+
+        # Yahi se file ka naam barcode ke hisaab se rakhenge
+        safe_name = re.sub(r'[^A-Za-z0-9_-]+', '_', barcode_text).strip('_')
+        if not safe_name:
+            safe_name = "label"
+
         st.download_button(
             "Download PDF",
             data=pdf_data,
-            file_name=f"{barcode_text}.pdf",
+            file_name=f"{safe_name}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
