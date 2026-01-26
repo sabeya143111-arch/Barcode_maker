@@ -188,7 +188,7 @@ def build_pdf(barcode_text: str) -> bytes:
     band_h = line_y - band_y - 2 * mm
 
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.40   # thoda kam logo area, zyada text area
+    logo_section_w = usable_w * 0.40   # thoda kam logo, zyada text space
     logo_x = rx + 4 * mm
     lh_logo = band_h * 0.99
     lw_logo = lh_logo
@@ -207,21 +207,26 @@ def build_pdf(barcode_text: str) -> bytes:
         mask="auto",
     )
 
+    # ===== BIGGER, BOLD, CENTER TEXT =====
     text_start_x = logo_x + logo_section_w + 1 * mm
     max_tw = rx + rw - text_start_x - 3 * mm
-    text_size = int(band_h * 1.0)
-    text_size = min(text_size, 60)
-    text_size = max(text_size, 22)
+
+    # bada starting size
+    text_size = int(band_h * 1.2)
+    text_size = min(text_size, 72)
+    text_size = max(text_size, 26)
+
     c.setFont("Helvetica-Bold", text_size)
     tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-    while tw > max_tw and text_size > 18:
+
+    # agar lamba code ho to hi chhota karo
+    while tw > max_tw and text_size > 24:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
-    # TEXT CENTER + RED
     text_y = band_y + band_h / 2 - text_size / 3
-    text_cx = rx + rw / 2   # pure right box ka center
+    text_cx = rx + rw / 2   # pure right box center
 
     c.setFillColor(HexColor("#FF0000"))   # red
     c.drawCentredString(text_cx, text_y, barcode_text)
