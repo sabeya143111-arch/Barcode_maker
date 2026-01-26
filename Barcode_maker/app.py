@@ -5,6 +5,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import black, HexColor
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import io
 import barcode
 from barcode.writer import ImageWriter
@@ -20,6 +22,15 @@ GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
 )
+
+# ===== FONTS =====
+# Caladea-Bold.ttf ko BASE_DIR / fonts / Caladea-Bold.ttf me rakho
+CALADEA_PATH = BASE_DIR / "fonts" / "Caladea-Bold.ttf"
+if CALADEA_PATH.exists():
+    pdfmetrics.registerFont(TTFont("Caladea", str(CALADEA_PATH)))
+    MAIN_FONT_NAME = "Caladea"
+else:
+    MAIN_FONT_NAME = "Helvetica-Bold"  # fallback
 
 _logo_cache = {}
 
@@ -81,31 +92,22 @@ def load_logo():
         return None, None
 
 
-# ===== SIMPLE PAGE CONFIG / HERO =====
-st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
-
-st.title("SWAG BARCODE MAKER")
-st.write(
-    "Design premium warehouse location labels with logo + Code128 barcode and export as a high‑resolution PDF."
-)
-
-# Common controls in sidebar
-with st.sidebar:
-    st.header("Label settings (common)")
-    c1, c2 = st.columns(2)
-    label_width_mm = c1.number_input("Width (mm)", value=210.0)
-    label_height_mm = c2.number_input("Height (mm)", value=60.0)
-    underline_gap_mm = st.slider("Gap (mm)", 1.0, 10.0, 2.0)
-    module_height = st.slider("Bar Height", 5, 40, 18)
-    module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
-    dpi_value = st.slider("DPI", 300, 1200, 600, 100)
-
-
-# ===== PDF BUILDER (SINGLE CODE) =====
-def build_pdf(barcode_text: str) -> bytes:
-    logo_img, logo_ir = load_logo()
-    if not logo_ir:
-        raise ValueError("Logo not found.")
+# ===== PDF BUILDER (Single Label) =====
+def build_pdf(
+    barcode_text,
+    label_width_mm,
+    label_height_mm,
+    module_height,
+    module_width,
+    dpi_value,
+    include_logo: bool = True,
+):
+    logo_img, logo_ir = (None, None)
+    if include_logo:
+        logo_img, logo_ir = load_logo()
+        if not logo_ir:
+            # agar logo nahi milta aur include_logo True hai to bhi aage barcodes/text ban jayega
+            include_logo = False
 
     # BARCODE
     bbuf = io.BytesIO()
@@ -188,45 +190,46 @@ def build_pdf(barcode_text: str) -> bytes:
     band_h = line_y - band_y - 2 * mm
 
     usable_w = rw - 8 * mm
-    logo_section_w = usable_w * 0.40   # thoda kam logo, zyada text space
-    logo_x = rx + 4 * mm
-    lh_logo = band_h * 0.99
-    lw_logo = lh_logo
-    ratio = logo_img.width / logo_img.height
-    if lw_logo / lh_logo > ratio:
-        lw_logo = lh_logo * ratio
+    if include_logo:
+        logo_section_w = usable_w * 0.40  # thoda kam logo, zyada text space
     else:
-        lh_logo = lw_logo / ratio
-    logo_y = band_y + (band_h - lh_logo) / 2
-    c.drawImage(
-        logo_ir,
-        logo_x,
-        logo_y,
-        width=lw_logo,
-        height=lh_logo,
-        mask="auto",
-    )
+        logo_section_w = 0  # bina logo ke pura space text ke liye
 
-    # ===== BIGGER, BOLD, CENTER TEXT =====
-    text_start_x = logo_x + logo_section_w + 1 * mm
+    logo_x = rx + 4 * mm
+
+    if include_logo and logo_img is not None:
+        lh_logo = band_h * 0.99
+        lw_logo = lh_logo
+        ratio = logo_img.width / logo_img.height
+        if lw_logo / lh_logo > ratio:
+            lw_logo = lh_logo * ratio
+        else:
+            lh_logo = lw_logo / ratio
+        logo_y = band_y + (band_h - lh_logo) / 2
+        c.drawImage(
+            logo_ir,
+            logo_x,
+            logo_y,
+            width=lw_logo,
+            height=lh_logo,
+            mask="auto",
+        )
+
+    # ===== BIGGER, CENTER, RED TEXT (CALADEA) =====
+    text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
 
-    # bada starting size
-    text_size = int(band_h * 1.2)
-    text_size = min(text_size, 72)
-    text_size = max(text_size, 26)
+    text_size = 35
+    c.setFont(MAIN_FONT_NAME, text_size)
+    tw = c.stringWidth(barcode_text, MAIN_FONT_NAME, text_size)
 
-    c.setFont("Helvetica-Bold", text_size)
-    tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-
-    # agar lamba code ho to hi chhota karo
     while tw > max_tw and text_size > 24:
         text_size -= 2
-        c.setFont("Helvetica-Bold", text_size)
-        tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+        c.setFont(MAIN_FONT_NAME, text_size)
+        tw = c.stringWidth(barcode_text, MAIN_FONT_NAME, text_size)
 
     text_y = band_y + band_h / 2 - text_size / 3
-    text_cx = rx + rw / 2   # pure right box center
+    text_cx = rx + rw / 2  # pure right box ka center
 
     c.setFillColor(HexColor("#FF0000"))   # red
     c.drawCentredString(text_cx, text_y, barcode_text)
@@ -238,123 +241,80 @@ def build_pdf(barcode_text: str) -> bytes:
     return pdf_buf.getvalue()
 
 
-# ===== TABS =====
-tab_single, tab_batch = st.tabs(["Single Label", "Batch Labels (Multi PDF ZIP)"])
+# ===== PAGE CONFIG =====
+st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
 
-# ---------- SINGLE LABEL TAB ----------
-with tab_single:
-    barcode_text_single = st.text_input("Location Code", value="W13-07-07-01-02")
-    if st.button("👀 Generate Preview / PDF (Single)"):
+st.title("SWAG BARCODE MAKER - Batch & Single")
+st.write(
+    "Design warehouse location labels with logo + Code128 barcode. Single or Batch mode - export as PDF or ZIP."
+)
+
+# ===== TABS: SINGLE vs BATCH =====
+tab1, tab2 = st.tabs(["📋 Single Label", "📦 Batch Labels"])
+
+# ===== SIDEBAR SETTINGS =====
+with st.sidebar:
+    st.header("Label Settings")
+    label_width_mm = st.number_input("Width (mm)", value=210.0, min_value=50.0, max_value=500.0)
+    label_height_mm = st.number_input("Height (mm)", value=60.0, min_value=20.0, max_value=300.0)
+    module_height = st.slider("Bar Height", 5, 40, 18)
+    module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
+    dpi_value = st.slider("DPI", 300, 1200, 600, 100)
+    include_logo_global = st.checkbox("Include Logo on labels", value=True)
+
+# ===== TAB 1: SINGLE LABEL =====
+with tab1:
+    st.subheader("Generate Single Barcode Label")
+    barcode_text = st.text_input("Location Code", value="W102-07-03-01-01", key="single_code")
+
+    if st.button("👀 Generate PDF", key="preview_btn"):
         try:
-            pdf_data = build_pdf(barcode_text_single)
-            st.success("Success!")
-            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", barcode_text_single).strip("_")
+            with st.spinner("Generating PDF..."):
+                pdf_data = build_pdf(
+                    barcode_text,
+                    label_width_mm,
+                    label_height_mm,
+                    module_height,
+                    module_width,
+                    dpi_value,
+                    include_logo=include_logo_global,
+                )
+            st.success("✅ PDF Generated!")
+            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", barcode_text).strip("_")
             if not safe_name:
                 safe_name = "label"
             st.download_button(
-                "Download PDF",
+                "📥 Download PDF",
                 data=pdf_data,
                 file_name=f"{safe_name}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ Error: {e}")
 
-# ---------- BATCH TAB ----------
-with tab_batch:
-    st.subheader("Paste / Upload multiple location codes")
+# ===== TAB 2: BATCH LABELS =====
+with tab2:
+    st.subheader("Generate Multiple Barcode Labels (Batch)")
+    st.write("Paste location codes (one per line) or upload CSV/Excel file")
 
-    st.write("Example:")
-    st.code(
-        """W102/W102-07-03-01-01
-W102/W102-07-03-01-02
-W102/W102-07-03-01-03
-...
-W102/W102-07-03-10-04"""
-    )
+    input_method = st.radio("Input Method:", ["📝 Text Area", "📄 CSV/Excel File"], horizontal=True)
 
-    col1, col2 = st.columns(2)
+    barcode_list = []
 
-    with col1:
-        text_input = st.text_area(
-            "Paste location codes (one per line)",
-            height=250,
-            placeholder="W102/W102-07-03-01-01\nW102/W102-07-03-01-02\nW102/W102-07-03-01-03\n...",
+    if input_method == "📝 Text Area":
+        codes_text = st.text_area(
+            "Enter location codes (one per line):",
+            value="W102/W102-07-03-01-01\nW102/W102-07-03-01-02\nW102/W102-07-03-01-03",
+            height=150,
+            key="batch_codes",
         )
-
-    with col2:
+        if codes_text:
+            barcode_list = [code.strip() for code in codes_text.split("\n") if code.strip()]
+    else:
         uploaded_file = st.file_uploader(
-            "OR upload CSV / Excel (codes in first column)",
-            type=["csv", "xlsx", "xls"],
+            "Upload CSV or Excel file", type=["csv", "xlsx", "xls"], key="file_upload"
         )
-
-    codes = []
-
-    # From text area
-    if text_input.strip():
-        for line in text_input.splitlines():
-            val = line.strip()
-            if val:
-                codes.append(val)
-
-    # From uploaded file
-    if uploaded_file is not None:
-        try:
-            if uploaded_file.name.lower().endswith(".csv"):
-                df = pd.read_csv(uploaded_file, header=None)
-            else:
-                df = pd.read_excel(uploaded_file, header=None)
-            file_codes = df.iloc[:, 0].dropna().astype(str).str.strip().tolist()
-            codes.extend(file_codes)
-        except Exception as e:
-            st.error(f"File read error: {e}")
-
-    # Remove duplicates but keep order
-    seen = set()
-    unique_codes = []
-    for ccode in codes:
-        if ccode not in seen:
-            seen.add(ccode)
-            unique_codes.append(ccode)
-
-    st.write(f"Total unique codes detected: **{len(unique_codes)}**")
-
-    if unique_codes:
-        st.write("First few codes:")
-        st.write(unique_codes[:5])
-
-    generate_zip_btn = st.button("🚀 Generate ZIP (All PDFs)")
-
-    if generate_zip_btn:
-        if not unique_codes:
-            st.warning("Please paste or upload at least one location code.")
-        else:
+        if uploaded_file:
             try:
-                progress = st.progress(0)
-                status = st.empty()
-
-                zip_buf = io.BytesIO()
-                with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                    total = len(unique_codes)
-                    for i, code in enumerate(unique_codes, start=1):
-                        status.text(f"Generating {i}/{total}: {code}")
-                        pdf_bytes = build_pdf(code)
-                        safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
-                        if not safe_name:
-                            safe_name = f"label_{i}"
-                        zf.writestr(f"{safe_name}.pdf", pdf_bytes)
-                        progress.progress(i / total)
-
-                zip_buf.seek(0)
-                st.success("All labels generated!")
-
-                st.download_button(
-                    "Download ZIP",
-                    data=zip_buf.getvalue(),
-                    file_name="barcode_labels.zip",
-                    mime="application/zip",
-                    use_container_width=True,
-                )
-            except Exception as e:
-                st.error(f"Batch error: {e}")
+                if uploaded_file.
