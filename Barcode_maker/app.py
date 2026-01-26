@@ -12,6 +12,8 @@ from urllib.request import urlopen
 import re
 import zipfile
 import pandas as pd
+from datetime import datetime
+
 
 # ===== PATH / LOGO SETTINGS =====
 BASE_DIR = Path(__file__).resolve().parent
@@ -314,6 +316,24 @@ def load_logo():
         return None, None
 
 
+# ===== BARCODE IMAGE BUILDER (for preview) =====
+def build_barcode_image(
+    barcode_text,
+    module_height,
+    module_width,
+    dpi_value,
+):
+    code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
+    options = {
+        "write_text": False,
+        "dpi": dpi_value,
+        "module_height": module_height,
+        "module_width": module_width,
+    }
+    img = code128.render(options)
+    return img
+
+
 # ===== PDF BUILDER (Single Label) =====
 def build_pdf(
     barcode_text,
@@ -325,6 +345,8 @@ def build_pdf(
     include_logo: bool = True,
     product_name: str = "",
     sku: str = "",
+    footer_text: str = "",
+    print_date: bool = False,
 ):
     logo_img, logo_ir = (None, None)
     if include_logo:
@@ -407,8 +429,8 @@ def build_pdf(
     c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
 
     # BOTTOM BAND (LOGO + TEXT)
-    band_y = m + 4 * mm
-    band_h = line_y - band_y - 2 * mm
+    band_y = m + 8 * mm
+    band_h = line_y - band_y - 4 * mm
 
     usable_w = rw - 8 * mm
     if include_logo and logo_img is not None:
@@ -456,11 +478,26 @@ def build_pdf(
 
     # EXTRA SMALL TEXT (PRODUCT NAME + SKU)
     extra = " • ".join(x for x in [product_name.strip(), sku.strip()] if x)
+    extra_y = text_y - text_size * 0.8
     if extra:
         small_font = 10
         c.setFont("Helvetica", small_font)
         c.setFillColor(black)
-        c.drawCentredString(text_cx, text_y - text_size * 0.8, extra)
+        c.drawCentredString(text_cx, extra_y, extra)
+
+    # FOOTER TEXT + DATE SECTION
+    footer_lines = []
+    if footer_text.strip():
+        footer_lines.append(footer_text.strip())
+    if print_date:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        footer_lines.append(f"Printed: {today_str}")
+
+    if footer_lines:
+        footer_full = "   |   ".join(footer_lines)
+        c.setFont("Helvetica", 7)
+        c.setFillColor(black)
+        c.drawRightString(rx + rw - 3 * mm, m + 2 * mm, footer_full)
 
     c.showPage()
     c.save()
@@ -473,6 +510,13 @@ st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout=
 
 # Load global CSS theme
 load_css()
+
+# ===== SESSION STATE FOR PRESETS =====
+if "presets" not in st.session_state:
+    st.session_state["presets"] = {}
+if "selected_preset" not in st.session_state:
+    st.session_state["selected_preset"] = "None"
+
 
 # ===== HEADER =====
 st.markdown(
@@ -527,12 +571,81 @@ with st.sidebar:
     elif preset == "Pallet (210x60)":
         width_default, height_default = 210.0, 60.0
 
-    label_width_mm = st.number_input("Width (mm)", value=width_default, min_value=50.0, max_value=500.0)
-    label_height_mm = st.number_input("Height (mm)", value=height_default, min_value=20.0, max_value=300.0)
-    module_height = st.slider("Bar Height", 5, 40, 18)
-    module_width = st.slider("Thickness", 0.2, 1.0, 0.45)
-    dpi_value = st.slider("DPI", 300, 1200, 600, 100)
-    include_logo_global = st.checkbox("Include Logo on labels", value=True)
+    # APPLY SAVED PRESET IF ANY
+    saved_presets_names = ["None"] + list(st.session_state["presets"].keys())
+    selected_saved = st.selectbox(
+        "My saved presets",
+        saved_presets_names,
+        index=saved_presets_names.index(st.session_state["selected_preset"])
+        if st.session_state["selected_preset"] in saved_presets_names
+        else 0,
+    )
+
+    if selected_saved != "None":
+        st.session_state["selected_preset"] = selected_saved
+        p = st.session_state["presets"][selected_saved]
+        width_default = p["label_width_mm"]
+        height_default = p["label_height_mm"]
+        default_module_height = p["module_height"]
+        default_module_width = p["module_width"]
+        default_dpi = p["dpi_value"]
+        default_logo = p["include_logo"]
+    else:
+        default_module_height = 18
+        default_module_width = 0.45
+        default_dpi = 600
+        default_logo = True
+
+    label_width_mm = st.number_input(
+        "Width (mm)", value=width_default, min_value=50.0, max_value=500.0
+    )
+    label_height_mm = st.number_input(
+        "Height (mm)", value=height_default, min_value=20.0, max_value=300.0
+    )
+
+    module_height = st.slider("Bar Height", 5, 40, default_module_height)
+    module_width = st.slider("Thickness", 0.2, 1.0, float(default_module_width))
+    dpi_value = st.slider("DPI", 300, 1200, default_dpi, 100)
+    include_logo_global = st.checkbox("Include Logo on labels", value=default_logo)
+
+    st.markdown("---")
+    st.subheader("Branding / Footer")
+    footer_text = st.text_input(
+        "Footer text (e.g. SWAG WAREHOUSE – JEDDAH)",
+        value="SWAG WAREHOUSE – JEDDAH",
+    )
+    print_date = st.checkbox("Print date on label", value=True)
+
+    st.markdown("---")
+    st.subheader("Save current settings as preset")
+    new_preset_name = st.text_input("Preset name", value="")
+    if st.button("💾 Save preset"):
+        if new_preset_name.strip():
+            st.session_state["presets"][new_preset_name.strip()] = {
+                "label_width_mm": label_width_mm,
+                "label_height_mm": label_height_mm,
+                "module_height": module_height,
+                "module_width": module_width,
+                "dpi_value": dpi_value,
+                "include_logo": include_logo_global,
+            }
+            st.session_state["selected_preset"] = new_preset_name.strip()
+            st.success(f"Preset '{new_preset_name.strip()}' saved!")
+        else:
+            st.warning("Please enter a preset name before saving.")
+
+
+# ===== HELPER: TEXT LENGTH SUGGESTION =====
+def text_length_hint(barcode_text, module_width):
+    length = len(barcode_text.strip())
+    if not barcode_text.strip():
+        return ""
+    if length > 25 and module_width > 0.4:
+        return "Text is long: consider using thinner bars (0.25–0.35) or bigger label width."
+    if length > 35:
+        return "Very long code detected: recommended to increase label width or split code visually."
+    return ""
+
 
 # ===== TAB 1: SINGLE =====
 with tab1:
@@ -542,48 +655,80 @@ with tab1:
     product_name = st.text_input("Product Name (optional)", value="", key="single_product")
     sku = st.text_input("SKU (optional)", value="", key="single_sku")
 
-    if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True):
-        try:
-            with st.spinner("Creating premium label PDF…"):
-                pdf_data = build_pdf(
+    hint = text_length_hint(barcode_text, module_width)
+    if hint:
+        st.info(hint)
+
+    # LIVE PREVIEW
+    col_preview, col_actions = st.columns([1.2, 1])
+    with col_preview:
+        if barcode_text.strip():
+            try:
+                preview_img = build_barcode_image(
                     barcode_text,
-                    label_width_mm,
-                    label_height_mm,
-                    module_height,
-                    module_width,
-                    dpi_value,
-                    include_logo=include_logo_global,
-                    product_name=product_name,
-                    sku=sku,
+                    module_height=module_height,
+                    module_width=module_width,
+                    dpi_value=dpi_value,
                 )
-            st.success("✅ PDF Generated!")
+                st.image(preview_img, caption="Live Barcode Preview", use_column_width=True)
+            except Exception as e:
+                st.warning(f"Preview not available: {e}")
 
-            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", barcode_text).strip("_")
-            if not safe_name:
-                safe_name = "label"
+    with col_actions:
+        if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True):
+            try:
+                with st.spinner("Creating premium label PDF…"):
+                    pdf_data = build_pdf(
+                        barcode_text,
+                        label_width_mm,
+                        label_height_mm,
+                        module_height,
+                        module_width,
+                        dpi_value,
+                        include_logo=include_logo_global,
+                        product_name=product_name,
+                        sku=sku,
+                        footer_text=footer_text,
+                        print_date=print_date,
+                    )
+                st.success("✅ PDF Generated!")
 
-            st.download_button(
-                "📥 Download PDF",
-                data=pdf_data,
-                file_name=f"{safe_name}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+                safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", barcode_text).strip("_")
+                if not safe_name:
+                    safe_name = "label"
+
+                st.download_button(
+                    "📥 Download PDF",
+                    data=pdf_data,
+                    file_name=f"{safe_name}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
 
 # ===== TAB 2: BATCH =====
 with tab2:
     st.subheader("Generate Multiple Barcode Labels (Batch)")
     st.write("Paste location codes (one per line) or upload CSV/Excel file.")
 
-    batch_product_name = st.text_input("Batch Product Name (optional, same for all)", value="", key="batch_product")
-    batch_sku = st.text_input("Batch SKU (optional, same for all)", value="", key="batch_sku")
-    prefix = st.text_input("Optional prefix to add if missing (e.g. W102/)", value="", key="batch_prefix")
+    batch_product_name = st.text_input(
+        "Batch Product Name (optional, same for all)", value="", key="batch_product"
+    )
+    batch_sku = st.text_input(
+        "Batch SKU (optional, same for all)", value="", key="batch_sku"
+    )
+    prefix = st.text_input(
+        "Optional prefix to add if missing (e.g. W102/)", value="", key="batch_prefix"
+    )
 
     input_method = st.radio("Input Method:", ["📝 Text Area", "📄 CSV/Excel File"], horizontal=True)
 
     barcode_list = []
+    df = None
+    code_column = None
+    product_column = None
+    sku_column = None
 
     if input_method == "📝 Text Area":
         codes_text = st.text_area(
@@ -610,16 +755,60 @@ with tab2:
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
-                raw_codes = df.iloc[:, 0].astype(str).tolist()
-                for code in raw_codes:
-                    code = code.strip()
+
+                st.write("Detected columns:", list(df.columns))
+
+                code_column = st.selectbox(
+                    "Select column for location codes",
+                    df.columns,
+                    index=0,
+                )
+                use_product_col = st.checkbox(
+                    "Use column for Product Name (optional, overrides batch Product Name)",
+                    value=False,
+                )
+                if use_product_col:
+                    product_column = st.selectbox(
+                        "Select Product Name column",
+                        df.columns,
+                        index=min(1, len(df.columns) - 1),
+                    )
+
+                use_sku_col = st.checkbox(
+                    "Use column for SKU (optional, overrides batch SKU)",
+                    value=False,
+                )
+                if use_sku_col:
+                    sku_column = st.selectbox(
+                        "Select SKU column",
+                        df.columns,
+                        index=min(1, len(df.columns) - 1),
+                    )
+
+                # BUILD BARCODE LIST + optional row-wise product / sku
+                per_row_products = []
+                per_row_skus = []
+                for _, row in df.iterrows():
+                    code = str(row[code_column]).strip()
                     if not code:
                         continue
                     if prefix and not code.startswith(prefix):
                         code = prefix + code
                     barcode_list.append(code)
+
+                    if product_column:
+                        per_row_products.append(str(row[product_column]).strip())
+                    else:
+                        per_row_products.append("")
+
+                    if sku_column:
+                        per_row_skus.append(str(row[sku_column]).strip())
+                    else:
+                        per_row_skus.append("")
+
             except Exception as e:
                 st.error(f"❌ Error reading file: {e}")
+                df = None
 
     if barcode_list:
         st.info(f"📊 Total codes to generate: **{len(barcode_list)}**")
@@ -634,6 +823,16 @@ with tab2:
                     for idx, code in enumerate(barcode_list, 1):
                         status_text.text(f"⏳ Generating {idx}/{len(barcode_list)}: {code}")
                         try:
+                            # row-wise product / sku if provided
+                            row_product = batch_product_name
+                            row_sku = batch_sku
+
+                            if df is not None:
+                                if product_column:
+                                    row_product = per_row_products[idx - 1] or batch_product_name
+                                if sku_column:
+                                    row_sku = per_row_skus[idx - 1] or batch_sku
+
                             pdf_data = build_pdf(
                                 code,
                                 label_width_mm,
@@ -642,8 +841,10 @@ with tab2:
                                 module_width,
                                 dpi_value,
                                 include_logo=include_logo_global,
-                                product_name=batch_product_name,
-                                sku=batch_sku,
+                                product_name=row_product,
+                                sku=row_sku,
+                                footer_text=footer_text,
+                                print_date=print_date,
                             )
                             safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
                             if not safe_name:
