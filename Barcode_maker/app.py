@@ -13,6 +13,12 @@ import re
 import zipfile
 import pandas as pd
 from datetime import datetime
+import json
+
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 
 # ===== PATH / LOGO SETTINGS =====
@@ -26,9 +32,9 @@ GITHUB_LOGO_URL = (
 _logo_cache = {}
 
 
-# ===== GLOBAL LUXURY THEME (CSS) =====
-def load_css():
-    luxury_css = """
+# ===== GLOBAL THEMES (CSS) =====
+def luxury_dark_css():
+    return """
     <style>
     /* Page background */
     .stApp {
@@ -258,7 +264,104 @@ def load_css():
     }
     </style>
     """
-    st.markdown(luxury_css, unsafe_allow_html=True)
+
+
+def clean_light_css():
+    return """
+    <style>
+    .stApp {
+        background: #f5f7fb;
+        color: #111827;
+        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    section[data-testid="stSidebar"] {
+        background: #ffffff;
+        border-right: 1px solid #e5e7eb;
+        box-shadow: 4px 0 18px rgba(0,0,0,0.04);
+    }
+    .block-container {
+        max-width: 1200px !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
+    .lux-header {
+        padding: 0.7rem 1.5rem 1.5rem 1.5rem;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #ffffff 0%, #e5e7eb 50%, #d1d5db 100%);
+        box-shadow: 0 16px 40px rgba(15,23,42,0.16);
+        border: 1px solid rgba(148,163,184,0.6);
+        position: relative;
+        overflow: hidden;
+    }
+    .lux-title {
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #111827;
+    }
+    .lux-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid rgba(59,130,246,0.4);
+        background: rgba(59,130,246,0.06);
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #1f2937;
+    }
+    .lux-subtitle {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: #374151;
+        max-width: 560px;
+    }
+    .lux-chip-row {
+        margin-top: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .lux-chip {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        color: #111827;
+    }
+    .stButton > button {
+        border-radius: 999px;
+        padding: 0.45rem 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid #2563eb;
+        background: linear-gradient(135deg,#3b82f6,#2563eb);
+        color: #ffffff;
+        box-shadow: 0 12px 28px rgba(37,99,235,0.45);
+    }
+    .stNumberInput > div > div > input,
+    .stTextInput > div > div > input,
+    textarea {
+        background: #ffffff !important;
+        color: #111827 !important;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
+    }
+    </style>
+    """
+
+
+def load_css(theme: str):
+    if theme == "Luxury Dark":
+        css = luxury_dark_css()
+    else:
+        css = clean_light_css()
+    st.markdown(css, unsafe_allow_html=True)
 
 
 def _crop_alpha(img: Image.Image) -> Image.Image:
@@ -316,14 +419,57 @@ def load_logo():
         return None, None
 
 
-# ===== BARCODE IMAGE BUILDER (for preview) =====
+# ===== BARCODE HELPERS =====
+BARCODE_TYPES = ["Code128", "EAN13", "EAN8", "UPCA", "QR"]
+
+
+def validate_code(barcode_type: str, text: str) -> str:
+    t = text.strip()
+    if not t:
+        return "Code is empty."
+    if barcode_type == "Code128":
+        return ""
+    if barcode_type in ["EAN13", "EAN8", "UPCA"]:
+        if not t.isdigit():
+            return f"{barcode_type} requires numeric digits only."
+        required = {"EAN13": 13, "EAN8": 8, "UPCA": 12}[barcode_type]
+        if len(t) != required:
+            return f"{barcode_type} must be exactly {required} digits."
+        return ""
+    if barcode_type == "QR":
+        return ""
+    return ""
+
+
 def build_barcode_image(
+    barcode_type,
     barcode_text,
     module_height,
     module_width,
     dpi_value,
 ):
-    code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
+    if barcode_type == "QR":
+        if qrcode is None:
+            raise RuntimeError("qrcode library not installed, cannot generate QR.")
+        qr = qrcode.QRCode(
+            version=1,
+            box_size=8,
+            border=2,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+        )
+        qr.add_data(barcode_text)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        return img.convert("RGB")
+
+    code_cls_map = {
+        "Code128": "code128",
+        "EAN13": "ean13",
+        "EAN8": "ean8",
+        "UPCA": "upca",
+    }
+    code_name = code_cls_map.get(barcode_type, "code128")
+    code128 = barcode.get(code_name, barcode_text, writer=ImageWriter())
     options = {
         "write_text": False,
         "dpi": dpi_value,
@@ -334,8 +480,8 @@ def build_barcode_image(
     return img
 
 
-# ===== PDF BUILDER (Single Label) =====
 def build_pdf(
+    barcode_type,
     barcode_text,
     label_width_mm,
     label_height_mm,
@@ -347,6 +493,8 @@ def build_pdf(
     sku: str = "",
     footer_text: str = "",
     print_date: bool = False,
+    warehouse: str = "",
+    zone: str = "",
 ):
     logo_img, logo_ir = (None, None)
     if include_logo:
@@ -354,16 +502,16 @@ def build_pdf(
         if not logo_ir:
             include_logo = False
 
+    # barcode image
     bbuf = io.BytesIO()
-    code128 = barcode.get("code128", barcode_text, writer=ImageWriter())
-    code128.render(
-        {
-            "write_text": False,
-            "dpi": dpi_value,
-            "module_height": module_height,
-            "module_width": module_width,
-        }
-    ).save(bbuf, format="PNG")
+    img = build_barcode_image(
+        barcode_type,
+        barcode_text,
+        module_height,
+        module_width,
+        dpi_value,
+    )
+    img.save(bbuf, format="PNG")
     bbuf.seek(0)
     bar_ir = ImageReader(bbuf)
 
@@ -413,9 +561,9 @@ def build_pdf(
     c.setStrokeColor(black)
     c.roundRect(rx, m, rw, rh, 3 * mm)
 
-    # BARCODE TOP
-    bh = rh * 0.42
-    bw = rw * 0.92
+    # BARCODE / QR TOP
+    bh = rh * 0.42 if barcode_type != "QR" else rh * 0.7
+    bw = rw * (0.92 if barcode_type != "QR" else 0.65)
     c.drawImage(
         bar_ir,
         rx + (rw - bw) / 2,
@@ -425,8 +573,12 @@ def build_pdf(
         mask="auto",
     )
     line_y = m + rh - bh - 6 * mm
-    c.setLineWidth(2)
-    c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
+    if barcode_type != "QR":
+        c.setLineWidth(2)
+        c.line(rx + 3 * mm, line_y, rx + rw - 3 * mm, line_y)
+    else:
+        # for QR, keep lower band slightly shorter
+        line_y = m + rh - bh - 4 * mm
 
     # BOTTOM BAND (LOGO + TEXT)
     band_y = m + 8 * mm
@@ -462,25 +614,35 @@ def build_pdf(
     max_tw = rx + rw - text_start_x - 3 * mm
     text_size = int(band_h * 1.05)
     text_size = min(text_size, 60)
-    text_size = max(text_size, 22)
+    text_size = max(text_size, 18)
     c.setFont("Helvetica-Bold", text_size)
-    tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
-    while tw > max_tw and text_size > 18:
+    display_text = barcode_text if len(barcode_text) <= 40 else barcode_text[:37] + "..."
+    tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
+    while tw > max_tw and text_size > 14:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
-        tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+        tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
 
     text_y = band_y + band_h / 2 - text_size / 3
     text_cx = rx + rw / 2
     c.setFillColor(HexColor("#FF0000"))
-    c.drawCentredString(text_cx, text_y, barcode_text)
+    c.drawCentredString(text_cx, text_y, display_text)
     c.setFillColor(black)
 
     # EXTRA SMALL TEXT (PRODUCT NAME + SKU)
-    extra = " • ".join(x for x in [product_name.strip(), sku.strip()] if x)
+    meta_bits = []
+    if product_name.strip():
+        meta_bits.append(product_name.strip())
+    if sku.strip():
+        meta_bits.append(sku.strip())
+    if warehouse.strip():
+        meta_bits.append(warehouse.strip())
+    if zone.strip():
+        meta_bits.append(zone.strip())
+    extra = " • ".join(meta_bits)
     extra_y = text_y - text_size * 0.8
     if extra:
-        small_font = 10
+        small_font = 9
         c.setFont("Helvetica", small_font)
         c.setFillColor(black)
         c.drawCentredString(text_cx, extra_y, extra)
@@ -508,15 +670,23 @@ def build_pdf(
 # ===== PAGE CONFIG =====
 st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷️", layout="wide")
 
-# Load global CSS theme
-load_css()
+# ===== SESSION STATE =====
+if "templates" not in st.session_state:
+    st.session_state["templates"] = {}
+if "selected_template" not in st.session_state:
+    st.session_state["selected_template"] = "None"
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "Luxury Dark"
 
-# ===== SESSION STATE FOR PRESETS =====
-if "presets" not in st.session_state:
-    st.session_state["presets"] = {}
-if "selected_preset" not in st.session_state:
-    st.session_state["selected_preset"] = "None"
+# ===== SIDEBAR TOP (GLOBAL) =====
+with st.sidebar:
+    st.header("App Mode & Theme")
+    mode = st.selectbox("Mode", ["Picker View", "Supervisor View"])
+    theme = st.selectbox("Theme", ["Luxury Dark", "Clean Light"], index=0)
+    st.session_state["theme"] = theme
 
+# Load theme CSS
+load_css(st.session_state["theme"])
 
 # ===== HEADER =====
 st.markdown(
@@ -530,14 +700,14 @@ st.markdown(
         <div>
           <div class="lux-title">SWAG BARCODE MAKER</div>
           <div class="lux-subtitle">
-            Design ultra‑clean warehouse labels with logo + Code128 barcode.
-            Single or batch — export ready‑to‑print PDFs in one click.
+            Design ultra‑clean warehouse labels with logo + multi‑type barcodes (Code128, EAN, QR).
+            Single or batch — export ready‑to‑print PDFs & logs in one click.
           </div>
           <div class="lux-chip-row">
-            <span class="lux-chip">Code128 · High‑DPI</span>
-            <span class="lux-chip">Logo Branding Ready</span>
-            <span class="lux-chip">Batch ZIP Export</span>
-            <span class="lux-chip">Warehouse Locations</span>
+            <span class="lux-chip">Code128 · EAN · QR</span>
+            <span class="lux-chip">Logo Branding & Footer</span>
+            <span class="lux-chip">Batch ZIP & Logs</span>
+            <span class="lux-chip">Warehouse Zones</span>
           </div>
         </div>
       </div>
@@ -551,19 +721,20 @@ st.write("")
 # ===== TABS =====
 tab1, tab2 = st.tabs(["📋 Single Label", "📦 Batch Labels"])
 
-# ===== SIDEBAR SETTINGS =====
+# ===== SIDEBAR SETTINGS (DETAIL) =====
 with st.sidebar:
+    st.markdown("---")
     st.header("Label Settings")
+
+    barcode_type = st.selectbox("Barcode type", BARCODE_TYPES)
 
     preset = st.selectbox(
         "Preset size",
         ["Custom", "Small Shelf (80x40)", "Box (100x60)", "Pallet (210x60)"],
     )
 
-    # defaults
     width_default = 210.0
     height_default = 60.0
-
     if preset == "Small Shelf (80x40)":
         width_default, height_default = 80.0, 40.0
     elif preset == "Box (100x60)":
@@ -571,30 +742,39 @@ with st.sidebar:
     elif preset == "Pallet (210x60)":
         width_default, height_default = 210.0, 60.0
 
-    # APPLY SAVED PRESET IF ANY
-    saved_presets_names = ["None"] + list(st.session_state["presets"].keys())
-    selected_saved = st.selectbox(
-        "My saved presets",
-        saved_presets_names,
-        index=saved_presets_names.index(st.session_state["selected_preset"])
-        if st.session_state["selected_preset"] in saved_presets_names
+    # APPLY TEMPLATE IF ANY
+    template_names = ["None"] + list(st.session_state["templates"].keys())
+    selected_template = st.selectbox(
+        "Template",
+        template_names,
+        index=template_names.index(st.session_state["selected_template"])
+        if st.session_state["selected_template"] in template_names
         else 0,
     )
 
-    if selected_saved != "None":
-        st.session_state["selected_preset"] = selected_saved
-        p = st.session_state["presets"][selected_saved]
-        width_default = p["label_width_mm"]
-        height_default = p["label_height_mm"]
-        default_module_height = p["module_height"]
-        default_module_width = p["module_width"]
-        default_dpi = p["dpi_value"]
-        default_logo = p["include_logo"]
+    if selected_template != "None":
+        st.session_state["selected_template"] = selected_template
+        tpl = st.session_state["templates"][selected_template]
+        width_default = tpl["label_width_mm"]
+        height_default = tpl["label_height_mm"]
+        default_module_height = tpl["module_height"]
+        default_module_width = tpl["module_width"]
+        default_dpi = tpl["dpi_value"]
+        default_logo = tpl["include_logo"]
+        barcode_type = tpl["barcode_type"]
+        footer_default = tpl.get("footer_text", "SWAG WAREHOUSE – JEDDAH")
+        date_default = tpl.get("print_date", True)
+        warehouse_default = tpl.get("warehouse", "JEDDAH_MAIN")
+        zone_default = tpl.get("zone", "")
     else:
         default_module_height = 18
         default_module_width = 0.45
         default_dpi = 600
         default_logo = True
+        footer_default = "SWAG WAREHOUSE – JEDDAH"
+        date_default = True
+        warehouse_default = "JEDDAH_MAIN"
+        zone_default = ""
 
     label_width_mm = st.number_input(
         "Width (mm)", value=width_default, min_value=50.0, max_value=500.0
@@ -609,41 +789,94 @@ with st.sidebar:
     include_logo_global = st.checkbox("Include Logo on labels", value=default_logo)
 
     st.markdown("---")
-    st.subheader("Branding / Footer")
-    footer_text = st.text_input(
-        "Footer text (e.g. SWAG WAREHOUSE – JEDDAH)",
-        value="SWAG WAREHOUSE – JEDDAH",
-    )
-    print_date = st.checkbox("Print date on label", value=True)
+    st.header("Warehouse context")
+    warehouse = st.text_input("Warehouse", value=warehouse_default)
+    zone = st.text_input("Zone / Aisle", value=zone_default)
 
     st.markdown("---")
-    st.subheader("Save current settings as preset")
-    new_preset_name = st.text_input("Preset name", value="")
-    if st.button("💾 Save preset"):
-        if new_preset_name.strip():
-            st.session_state["presets"][new_preset_name.strip()] = {
-                "label_width_mm": label_width_mm,
-                "label_height_mm": label_height_mm,
-                "module_height": module_height,
-                "module_width": module_width,
-                "dpi_value": dpi_value,
-                "include_logo": include_logo_global,
-            }
-            st.session_state["selected_preset"] = new_preset_name.strip()
-            st.success(f"Preset '{new_preset_name.strip()}' saved!")
-        else:
-            st.warning("Please enter a preset name before saving.")
+    st.header("Branding / Footer")
+    footer_text = st.text_input(
+        "Footer text", value=footer_default
+    )
+    print_date = st.checkbox("Print date on label", value=date_default)
+
+    st.markdown("---")
+    st.header("Templates")
+    new_tpl_name = st.text_input("Template name", value="")
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        if st.button("💾 Save / Update template"):
+            if new_tpl_name.strip():
+                st.session_state["templates"][new_tpl_name.strip()] = {
+                    "label_width_mm": label_width_mm,
+                    "label_height_mm": label_height_mm,
+                    "module_height": module_height,
+                    "module_width": module_width,
+                    "dpi_value": dpi_value,
+                    "include_logo": include_logo_global,
+                    "barcode_type": barcode_type,
+                    "footer_text": footer_text,
+                    "print_date": print_date,
+                    "warehouse": warehouse,
+                    "zone": zone,
+                }
+                st.session_state["selected_template"] = new_tpl_name.strip()
+                st.success(f"Template '{new_tpl_name.strip()}' saved/updated!")
+            else:
+                st.warning("Enter a template name first.")
+    with col_t2:
+        if st.button("🗑️ Delete selected template"):
+            if selected_template != "None":
+                st.session_state["templates"].pop(selected_template, None)
+                st.session_state["selected_template"] = "None"
+                st.success(f"Template '{selected_template}' deleted.")
+            else:
+                st.warning("No template selected.")
+
+    st.markdown("---")
+    st.header("Batch ZIP Settings")
+    max_labels_per_zip = st.number_input(
+        "Max labels per ZIP chunk", min_value=100, max_value=5000, value=1000, step=100
+    )
+
+    st.markdown("---")
+    st.header("Config Import / Export")
+    if st.button("⬇️ Export config"):
+        cfg = {
+            "templates": st.session_state["templates"],
+            "selected_template": st.session_state["selected_template"],
+            "theme": st.session_state["theme"],
+        }
+        cfg_bytes = json.dumps(cfg, indent=2).encode("utf-8")
+        st.download_button(
+            "Download config.json",
+            data=cfg_bytes,
+            file_name="swag_barcode_config.json",
+            mime="application/json",
+        )
+
+    cfg_file = st.file_uploader("Import config.json", type=["json"], key="cfg_upload")
+    if cfg_file is not None:
+        try:
+            cfg_data = json.load(cfg_file)
+            st.session_state["templates"] = cfg_data.get("templates", {})
+            st.session_state["selected_template"] = cfg_data.get(
+                "selected_template", "None"
+            )
+            st.session_state["theme"] = cfg_data.get("theme", "Luxury Dark")
+            st.success("Config imported. Refresh page to fully apply theme.")
+        except Exception as e:
+            st.error(f"Config import error: {e}")
 
 
-# ===== HELPER: TEXT LENGTH SUGGESTION =====
 def text_length_hint(barcode_text, module_width):
     length = len(barcode_text.strip())
     if not barcode_text.strip():
         return ""
     if length > 25 and module_width > 0.4:
-        return "Text is long: consider using thinner bars (0.25–0.35) or bigger label width."
+        return "Text is long: consider thinner bars (0.25–0.35) or larger label width."
     if length > 35:
-        return "Very long code detected: recommended to increase label width or split code visually."
+        return "Very long code: increase label width or visually split code."
     return ""
 
 
@@ -651,34 +884,43 @@ def text_length_hint(barcode_text, module_width):
 with tab1:
     st.subheader("Generate Single Barcode Label")
 
-    barcode_text = st.text_input("Location Code", value="W102-07-03-01-01", key="single_code")
-    product_name = st.text_input("Product Name (optional)", value="", key="single_product")
-    sku = st.text_input("SKU (optional)", value="", key="single_sku")
+    if mode == "Picker View":
+        barcode_text = st.text_input("Location Code", value="W102-07-03-01-01", key="single_code")
+        product_name = ""
+        sku = ""
+    else:
+        barcode_text = st.text_input("Location Code", value="W102-07-03-01-01", key="single_code")
+        product_name = st.text_input("Product Name (optional)", value="", key="single_product")
+        sku = st.text_input("SKU (optional)", value="", key="single_sku")
 
+    error_msg = validate_code(barcode_type, barcode_text)
+    if error_msg:
+        st.error(error_msg)
     hint = text_length_hint(barcode_text, module_width)
-    if hint:
+    if hint and not error_msg:
         st.info(hint)
 
-    # LIVE PREVIEW
     col_preview, col_actions = st.columns([1.2, 1])
     with col_preview:
-        if barcode_text.strip():
+        if barcode_text.strip() and not error_msg:
             try:
                 preview_img = build_barcode_image(
+                    barcode_type,
                     barcode_text,
                     module_height=module_height,
                     module_width=module_width,
                     dpi_value=dpi_value,
                 )
-                st.image(preview_img, caption="Live Barcode Preview", use_column_width=True)
+                st.image(preview_img, caption=f"Live {barcode_type} Preview", use_column_width=True)
             except Exception as e:
                 st.warning(f"Preview not available: {e}")
 
     with col_actions:
-        if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True):
+        if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True, disabled=bool(error_msg)):
             try:
                 with st.spinner("Creating premium label PDF…"):
                     pdf_data = build_pdf(
+                        barcode_type,
                         barcode_text,
                         label_width_mm,
                         label_height_mm,
@@ -690,6 +932,8 @@ with tab1:
                         sku=sku,
                         footer_text=footer_text,
                         print_date=print_date,
+                        warehouse=warehouse,
+                        zone=zone,
                     )
                 st.success("✅ PDF Generated!")
 
@@ -712,12 +956,17 @@ with tab2:
     st.subheader("Generate Multiple Barcode Labels (Batch)")
     st.write("Paste location codes (one per line) or upload CSV/Excel file.")
 
-    batch_product_name = st.text_input(
-        "Batch Product Name (optional, same for all)", value="", key="batch_product"
-    )
-    batch_sku = st.text_input(
-        "Batch SKU (optional, same for all)", value="", key="batch_sku"
-    )
+    if mode == "Picker View":
+        batch_product_name = ""
+        batch_sku = ""
+    else:
+        batch_product_name = st.text_input(
+            "Batch Product Name (optional, same for all)", value="", key="batch_product"
+        )
+        batch_sku = st.text_input(
+            "Batch SKU (optional, same for all)", value="", key="batch_sku"
+        )
+
     prefix = st.text_input(
         "Optional prefix to add if missing (e.g. W102/)", value="", key="batch_prefix"
     )
@@ -726,9 +975,15 @@ with tab2:
 
     barcode_list = []
     df = None
+    per_row_products = []
+    per_row_skus = []
+    per_row_wh = []
+    per_row_zone = []
     code_column = None
     product_column = None
     sku_column = None
+    wh_column = None
+    zone_column = None
 
     if input_method == "📝 Text Area":
         codes_text = st.text_area(
@@ -745,6 +1000,10 @@ with tab2:
                 if prefix and not code.startswith(prefix):
                     code = prefix + code
                 barcode_list.append(code)
+                per_row_products.append("")
+                per_row_skus.append("")
+                per_row_wh.append("")
+                per_row_zone.append("")
     else:
         uploaded_file = st.file_uploader(
             "Upload CSV or Excel file", type=["csv", "xlsx", "xls"], key="file_upload"
@@ -763,9 +1022,9 @@ with tab2:
                     df.columns,
                     index=0,
                 )
+
                 use_product_col = st.checkbox(
-                    "Use column for Product Name (optional, overrides batch Product Name)",
-                    value=False,
+                    "Use column for Product Name", value=False
                 )
                 if use_product_col:
                     product_column = st.selectbox(
@@ -775,8 +1034,7 @@ with tab2:
                     )
 
                 use_sku_col = st.checkbox(
-                    "Use column for SKU (optional, overrides batch SKU)",
-                    value=False,
+                    "Use column for SKU", value=False
                 )
                 if use_sku_col:
                     sku_column = st.selectbox(
@@ -785,9 +1043,26 @@ with tab2:
                         index=min(1, len(df.columns) - 1),
                     )
 
-                # BUILD BARCODE LIST + optional row-wise product / sku
-                per_row_products = []
-                per_row_skus = []
+                use_wh_col = st.checkbox(
+                    "Use column for Warehouse", value=False
+                )
+                if use_wh_col:
+                    wh_column = st.selectbox(
+                        "Select Warehouse column",
+                        df.columns,
+                        index=min(1, len(df.columns) - 1),
+                    )
+
+                use_zone_col = st.checkbox(
+                    "Use column for Zone / Aisle", value=False
+                )
+                if use_zone_col:
+                    zone_column = st.selectbox(
+                        "Select Zone column",
+                        df.columns,
+                        index=min(1, len(df.columns) - 1),
+                    )
+
                 for _, row in df.iterrows():
                     code = str(row[code_column]).strip()
                     if not code:
@@ -796,77 +1071,193 @@ with tab2:
                         code = prefix + code
                     barcode_list.append(code)
 
-                    if product_column:
-                        per_row_products.append(str(row[product_column]).strip())
-                    else:
-                        per_row_products.append("")
-
-                    if sku_column:
-                        per_row_skus.append(str(row[sku_column]).strip())
-                    else:
-                        per_row_skus.append("")
+                    per_row_products.append(str(row[product_column]).strip() if product_column else "")
+                    per_row_skus.append(str(row[sku_column]).strip() if sku_column else "")
+                    per_row_wh.append(str(row[wh_column]).strip() if wh_column else "")
+                    per_row_zone.append(str(row[zone_column]).strip() if zone_column else "")
 
             except Exception as e:
                 st.error(f"❌ Error reading file: {e}")
                 df = None
 
-    if barcode_list:
-        st.info(f"📊 Total codes to generate: **{len(barcode_list)}**")
+    st.markdown("---")
+    st.subheader("CSV Template Helper")
+    if st.button("⬇️ Download CSV Template"):
+        sample = pd.DataFrame(
+            {
+                "code": ["W102-07-03-01-01", "W102-07-03-01-02"],
+                "product_name": ["T-SHIRT BLACK", "T-SHIRT WHITE"],
+                "sku": ["TSH-BLK-S", "TSH-WHT-M"],
+                "warehouse": ["JEDDAH_MAIN", "JEDDAH_MAIN"],
+                "zone": ["A1", "A1"],
+            }
+        )
+        csv_bytes = sample.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download sample_template.csv",
+            data=csv_bytes,
+            file_name="barcode_template_sample.csv",
+            mime="text/csv",
+        )
 
+    invalid_codes = []
+    valid_codes = []
+    if barcode_list:
+        for code in barcode_list:
+            err = validate_code(barcode_type, code)
+            if err:
+                invalid_codes.append((code, err))
+            else:
+                valid_codes.append(code)
+
+    if barcode_list:
+        st.info(f"📊 Total codes input: **{len(barcode_list)}**")
+        st.write(f"✅ Valid for {barcode_type}: {len(valid_codes)}")
+        st.write(f"⚠️ Invalid: {len(invalid_codes)}")
+        if invalid_codes:
+            with st.expander("View invalid codes"):
+                for code, msg in invalid_codes:
+                    st.write(f"- `{code}` → {msg}")
+
+    log_records = []
+
+    if barcode_list and valid_codes:
         if st.button("🚀 Generate ZIP (All PDFs)", use_container_width=True, key="generate_zip_btn"):
             try:
+                total = len(barcode_list)
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                    for idx, code in enumerate(barcode_list, 1):
-                        status_text.text(f"⏳ Generating {idx}/{len(barcode_list)}: {code}")
-                        try:
-                            # row-wise product / sku if provided
-                            row_product = batch_product_name
-                            row_sku = batch_sku
+                zip_buffers = []
+                current_zip = io.BytesIO()
+                current_zip_file = zipfile.ZipFile(current_zip, "w", zipfile.ZIP_DEFLATED)
+                current_count = 0
+                zip_index = 1
 
-                            if df is not None:
-                                if product_column:
-                                    row_product = per_row_products[idx - 1] or batch_product_name
-                                if sku_column:
-                                    row_sku = per_row_skus[idx - 1] or batch_sku
+                def flush_zip():
+                    nonlocal current_zip, current_zip_file, zip_buffers, zip_index, current_count
+                    current_zip_file.close()
+                    current_zip.seek(0)
+                    zip_buffers.append((zip_index, current_zip.getvalue()))
+                    zip_index += 1
+                    current_zip = io.BytesIO()
+                    current_zip_file = zipfile.ZipFile(current_zip, "w", zipfile.ZIP_DEFLATED)
+                    current_count = 0
 
-                            pdf_data = build_pdf(
-                                code,
-                                label_width_mm,
-                                label_height_mm,
-                                module_height,
-                                module_width,
-                                dpi_value,
-                                include_logo=include_logo_global,
-                                product_name=row_product,
-                                sku=row_sku,
-                                footer_text=footer_text,
-                                print_date=print_date,
-                            )
-                            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
-                            if not safe_name:
-                                safe_name = f"label_{idx}"
-                            zip_file.writestr(f"{safe_name}.pdf", pdf_data)
-                        except Exception as e:
-                            st.warning(f"⚠️ Skipped {code}: {e}")
+                for idx, code in enumerate(barcode_list, 1):
+                    err = validate_code(barcode_type, code)
+                    if err:
+                        log_records.append(
+                            {
+                                "code": code,
+                                "status": "invalid",
+                                "error": err,
+                            }
+                        )
+                        status_text.text(f"⚠️ Skipped invalid {idx}/{total}: {code}")
+                        progress_bar.progress(idx / total)
+                        continue
 
-                        progress_bar.progress(idx / len(barcode_list))
+                    status_text.text(f"⏳ Generating {idx}/{total}: {code}")
+                    try:
+                        row_idx = idx - 1
+                        row_product = batch_product_name
+                        row_sku = batch_sku
+                        row_wh = warehouse
+                        row_zone = zone
 
-                zip_buffer.seek(0)
+                        if df is not None:
+                            if product_column:
+                                val = per_row_products[row_idx]
+                                row_product = val or batch_product_name
+                            if sku_column:
+                                val = per_row_skus[row_idx]
+                                row_sku = val or batch_sku
+                            if wh_column:
+                                val = per_row_wh[row_idx]
+                                row_wh = val or warehouse
+                            if zone_column:
+                                val = per_row_zone[row_idx]
+                                row_zone = val or zone
+
+                        pdf_data = build_pdf(
+                            barcode_type,
+                            code,
+                            label_width_mm,
+                            label_height_mm,
+                            module_height,
+                            module_width,
+                            dpi_value,
+                            include_logo=include_logo_global,
+                            product_name=row_product,
+                            sku=row_sku,
+                            footer_text=footer_text,
+                            print_date=print_date,
+                            warehouse=row_wh,
+                            zone=row_zone,
+                        )
+                        safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
+                        if not safe_name:
+                            safe_name = f"label_{idx}"
+                        current_zip_file.writestr(f"{safe_name}.pdf", pdf_data)
+                        current_count += 1
+
+                        log_records.append(
+                            {
+                                "code": code,
+                                "status": "ok",
+                                "error": "",
+                            }
+                        )
+
+                        if current_count >= max_labels_per_zip:
+                            flush_zip()
+
+                    except Exception as e:
+                        log_records.append(
+                            {
+                                "code": code,
+                                "status": "error",
+                                "error": str(e),
+                            }
+                        )
+                        st.warning(f"⚠️ Skipped {code}: {e}")
+
+                    progress_bar.progress(idx / total)
+
+                if current_count > 0:
+                    flush_zip()
+
                 status_text.empty()
                 progress_bar.empty()
-                st.success(f"✅ Successfully generated {len(barcode_list)} PDFs!")
-                st.download_button(
-                    "📦 Download ZIP",
-                    data=zip_buffer.getvalue(),
-                    file_name="barcode_labels.zip",
-                    mime="application/zip",
-                    use_container_width=True,
+                st.success(
+                    f"✅ Successfully processed {len(barcode_list)} codes. "
+                    f"Valid PDFs generated for {len([r for r in log_records if r['status']=='ok'])} codes."
                 )
+
+                for idx_zip, data in zip_buffers:
+                    st.download_button(
+                        f"📦 Download ZIP part {idx_zip}",
+                        data=data,
+                        file_name=f"barcode_labels_part{idx_zip}.zip",
+                        mime="application/zip",
+                        use_container_width=True,
+                    )
+
+                if log_records:
+                    st.markdown("---")
+                    st.subheader("Batch log")
+                    log_df = pd.DataFrame(log_records)
+                    st.dataframe(log_df, use_container_width=True)
+                    log_csv = log_df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "⬇️ Download log CSV",
+                        data=log_csv,
+                        file_name="barcode_batch_log.csv",
+                        mime="text/csv",
+                    )
+
             except Exception as e:
-                st.error(f"❌ Error generating ZIP: {e}")
-    else:
-        st.info("👆 Enter barcode codes above to get started")
+                st.error(f"❌ Error generating ZIPs: {e}")
+    elif not barcode_list:
+        st.info("👆 Enter or upload barcode codes above to get started")
