@@ -5,8 +5,6 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import black, HexColor
 from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 import io
 import barcode
 from barcode.writer import ImageWriter
@@ -22,15 +20,6 @@ GITHUB_LOGO_URL = (
     "https://raw.githubusercontent.com/"
     "sabeya143111-arch/Barcode_maker/main/Barcode_maker/assets/logo.png"
 )
-
-# ===== FONTS =====
-# Caladea-Bold.ttf ko BASE_DIR / fonts / Caladea-Bold.ttf me rakho
-CALADEA_PATH = BASE_DIR / "fonts" / "Caladea-Bold.ttf"
-if CALADEA_PATH.exists():
-    pdfmetrics.registerFont(TTFont("Caladea", str(CALADEA_PATH)))
-    MAIN_FONT_NAME = "Caladea"
-else:
-    MAIN_FONT_NAME = "Helvetica-Bold"  # fallback
 
 _logo_cache = {}
 
@@ -81,7 +70,7 @@ def load_logo():
         buf = io.BytesIO(data)
         buf.seek(0)
         raw = Image.open(buf).convert("RGBA")
-        img = _make_square_rgba(raw)
+        img = _make_square_rgva(raw)
         buf2 = io.BytesIO()
         img.save(buf2, format="PNG")
         buf2.seek(0)
@@ -106,7 +95,6 @@ def build_pdf(
     if include_logo:
         logo_img, logo_ir = load_logo()
         if not logo_ir:
-            # agar logo nahi milta aur include_logo True hai to bhi aage barcodes/text ban jayega
             include_logo = False
 
     # BARCODE
@@ -190,14 +178,10 @@ def build_pdf(
     band_h = line_y - band_y - 2 * mm
 
     usable_w = rw - 8 * mm
-    if include_logo:
-        logo_section_w = usable_w * 0.40  # thoda kam logo, zyada text space
-    else:
-        logo_section_w = 0  # bina logo ke pura space text ke liye
-
-    logo_x = rx + 4 * mm
-
     if include_logo and logo_img is not None:
+        logo_section_w = usable_w * 0.40
+        logo_x = rx + 4 * mm
+
         lh_logo = band_h * 0.99
         lw_logo = lh_logo
         ratio = logo_img.width / logo_img.height
@@ -214,24 +198,26 @@ def build_pdf(
             height=lh_logo,
             mask="auto",
         )
+    else:
+        logo_section_w = 0
+        logo_x = rx + 4 * mm
 
-    # ===== BIGGER, CENTER, RED TEXT (CALADEA) =====
+    # TEXT (ORIGINAL AUTO SIZE, CENTER)
     text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
-
-    text_size = 35
-    c.setFont(MAIN_FONT_NAME, text_size)
-    tw = c.stringWidth(barcode_text, MAIN_FONT_NAME, text_size)
-
-    while tw > max_tw and text_size > 24:
+    text_size = int(band_h * 1.0)
+    text_size = min(text_size, 60)
+    text_size = max(text_size, 22)
+    c.setFont("Helvetica-Bold", text_size)
+    tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
+    while tw > max_tw and text_size > 18:
         text_size -= 2
-        c.setFont(MAIN_FONT_NAME, text_size)
-        tw = c.stringWidth(barcode_text, MAIN_FONT_NAME, text_size)
+        c.setFont("Helvetica-Bold", text_size)
+        tw = c.stringWidth(barcode_text, "Helvetica-Bold", text_size)
 
     text_y = band_y + band_h / 2 - text_size / 3
     text_cx = rx + rw / 2  # pure right box ka center
-
-    c.setFillColor(HexColor("#FF0000"))   # red
+    c.setFillColor(HexColor("#FF0000"))  # red
     c.drawCentredString(text_cx, text_y, barcode_text)
     c.setFillColor(black)
 
@@ -317,4 +303,58 @@ with tab2:
         )
         if uploaded_file:
             try:
-                if uploaded_file.
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                barcode_list = df.iloc[:, 0].astype(str).tolist()
+                barcode_list = [code.strip() for code in barcode_list if code.strip()]
+            except Exception as e:
+                st.error(f"❌ Error reading file: {e}")
+
+    if barcode_list:
+        st.info(f"📊 Total codes to generate: **{len(barcode_list)}**")
+
+        if st.button("🚀 Generate ZIP (All PDFs)", use_container_width=True, key="generate_zip_btn"):
+            try:
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                    for idx, code in enumerate(barcode_list, 1):
+                        status_text.text(f"⏳ Generating {idx}/{len(barcode_list)}: {code}")
+                        try:
+                            pdf_data = build_pdf(
+                                code,
+                                label_width_mm,
+                                label_height_mm,
+                                module_height,
+                                module_width,
+                                dpi_value,
+                                include_logo=include_logo_global,
+                            )
+                            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", code).strip("_")
+                            if not safe_name:
+                                safe_name = f"label_{idx}"
+                            zip_file.writestr(f"{safe_name}.pdf", pdf_data)
+                        except Exception as e:
+                            st.warning(f"⚠️ Skipped {code}: {e}")
+
+                        progress_bar.progress(idx / len(barcode_list))
+
+                zip_buffer.seek(0)
+                status_text.empty()
+                progress_bar.empty()
+                st.success(f"✅ Successfully generated {len(barcode_list)} PDFs!")
+                st.download_button(
+                    "📦 Download ZIP",
+                    data=zip_buffer.getvalue(),
+                    file_name="barcode_labels.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.error(f"❌ Error generating ZIP: {e}")
+    else:
+        st.info("👆 Enter barcode codes above to get started")
