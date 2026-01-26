@@ -1014,7 +1014,6 @@ with tab2:
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
-
                 st.write("Detected columns:", list(df.columns))
 
                 code_column = st.selectbox(
@@ -1121,6 +1120,17 @@ with tab2:
 
     log_records = []
 
+    # --- helper to flush ZIP without nonlocal ---
+    def flush_zip_state(current_zip, current_zip_file, zip_buffers, zip_index, current_count):
+        current_zip_file.close()
+        current_zip.seek(0)
+        zip_buffers.append((zip_index, current_zip.getvalue()))
+        zip_index += 1
+        current_zip = io.BytesIO()
+        current_zip_file = zipfile.ZipFile(current_zip, "w", zipfile.ZIP_DEFLATED)
+        current_count = 0
+        return current_zip, current_zip_file, zip_buffers, zip_index, current_count
+
     if barcode_list and valid_codes:
         if st.button("🚀 Generate ZIP (All PDFs)", use_container_width=True, key="generate_zip_btn"):
             try:
@@ -1133,16 +1143,6 @@ with tab2:
                 current_zip_file = zipfile.ZipFile(current_zip, "w", zipfile.ZIP_DEFLATED)
                 current_count = 0
                 zip_index = 1
-
-                def flush_zip():
-                    nonlocal current_zip, current_zip_file, zip_buffers, zip_index, current_count
-                    current_zip_file.close()
-                    current_zip.seek(0)
-                    zip_buffers.append((zip_index, current_zip.getvalue()))
-                    zip_index += 1
-                    current_zip = io.BytesIO()
-                    current_zip_file = zipfile.ZipFile(current_zip, "w", zipfile.ZIP_DEFLATED)
-                    current_count = 0
 
                 for idx, code in enumerate(barcode_list, 1):
                     err = validate_code(barcode_type, code)
@@ -1211,7 +1211,9 @@ with tab2:
                         )
 
                         if current_count >= max_labels_per_zip:
-                            flush_zip()
+                            current_zip, current_zip_file, zip_buffers, zip_index, current_count = flush_zip_state(
+                                current_zip, current_zip_file, zip_buffers, zip_index, current_count
+                            )
 
                     except Exception as e:
                         log_records.append(
@@ -1226,7 +1228,9 @@ with tab2:
                     progress_bar.progress(idx / total)
 
                 if current_count > 0:
-                    flush_zip()
+                    current_zip, current_zip_file, zip_buffers, zip_index, current_count = flush_zip_state(
+                        current_zip, current_zip_file, zip_buffers, zip_index, current_count
+                    )
 
                 status_text.empty()
                 progress_bar.empty()
