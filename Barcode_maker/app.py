@@ -36,21 +36,21 @@ _logo_cache = {}
 # ===== WAREHOUSE PROFILES (ADVANCED FEATURE) =====
 WAREHOUSE_PROFILES = {
     "JEDDAH_MAIN": {
-        "footer": "SWAG WAREHOUSE â€“ JEDDAH",
+        "footer": "SWAG WAREHOUSE - JEDDAH",
         "warehouse": "JEDDAH_MAIN",
         "zone": "",
         "dpi": 600,
         "preset": "Pallet (210x60)",
     },
     "RIYADH_DC": {
-        "footer": "SWAG WAREHOUSE â€“ RIYADH DC",
+        "footer": "SWAG WAREHOUSE - RIYADH DC",
         "warehouse": "RIYADH_DC",
         "zone": "",
         "dpi": 600,
         "preset": "Box (100x60)",
     },
     "DAMMAM_HUB": {
-        "footer": "SWAG WAREHOUSE â€“ DAMMAM HUB",
+        "footer": "SWAG WAREHOUSE - DAMMAM HUB",
         "warehouse": "DAMMAM_HUB",
         "zone": "",
         "dpi": 600,
@@ -454,7 +454,7 @@ def human_friendly_location(code: str) -> str:
     parts = re.split(r"[-/]", code)
     # Example pattern: W102-07-03-01-01
     if len(parts) >= 5:
-        return f"Rack {parts[0]} Â· Aisle {parts[1]} Â· Bay {parts[2]} Â· Shelf {parts[3]} Â· Bin {parts[4]}"
+        return f"Rack {parts[0]} · Aisle {parts[1]} · Bay {parts[2]} · Shelf {parts[3]} · Bin {parts[4]}"
     return code
 
 
@@ -664,7 +664,7 @@ def build_pdf(
         meta_bits.append(zone.strip())
     if show_human_location:
         meta_bits.append(human_friendly_location(barcode_text))
-    extra = " â€¢ ".join(meta_bits)
+    extra = " • ".join(meta_bits)
     extra_y = text_y - text_size * 0.8
     if extra:
         small_font = 8
@@ -704,7 +704,7 @@ def build_pdf(
 
 
 # ===== PAGE CONFIG =====
-st.set_page_config(page_title="Swag Barcode Maker", page_icon="ðŸ·ï¸", layout="wide")
+st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷", layout="wide")
 
 # ===== SESSION STATE =====
 if "templates" not in st.session_state:
@@ -748,7 +748,7 @@ st.markdown(
             Single or batch a export ready to print PDFs & logs in one click.
           </div>
           <div class="lux-chip-row">
-            <span class="lux-chip">Code128 Â· EAN Â· QR</span>
+            <span class="lux-chip">Code128 · EAN · QR</span>
             <span class="lux-chip">Logo Branding & Footer</span>
             <span class="lux-chip">Batch ZIP & Logs</span>
             <span class="lux-chip">Warehouse Zones</span>
@@ -763,7 +763,7 @@ st.markdown(
 st.write("")
 
 # ===== TABS =====
-tab1, tab2 = st.tabs(["ðŸ“‹ Single Label", "ðŸ“¦ Batch Labels"])
+tab1, tab2 = st.tabs(["📋 Single Label", "📦 Batch Labels"])
 
 # ===== SIDEBAR SETTINGS (DETAIL) =====
 with st.sidebar:
@@ -858,7 +858,7 @@ with st.sidebar:
     new_tpl_name = st.text_input("Template name", value="")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        if st.button("ðŸ’¾ Save / Update template"):
+        if st.button("💾 Save / Update template"):
             if new_tpl_name.strip():
                 st.session_state["templates"][new_tpl_name.strip()] = {
                     "label_width_mm": label_width_mm,
@@ -878,7 +878,7 @@ with st.sidebar:
             else:
                 st.warning("Enter a template name first.")
     with col_t2:
-        if st.button("ðŸ—‘ï¸ Delete selected template"):
+        if st.button("🗑️ Delete selected template"):
             if selected_template != "None":
                 st.session_state["templates"].pop(selected_template, None)
                 st.session_state["selected_template"] = "None"
@@ -896,7 +896,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Config Import / Export")
-    if st.button("â¬‡ï¸ Export config"):
+    if st.button("⬇️ Export config"):
         cfg = {
             "templates": st.session_state["templates"],
             "selected_template": st.session_state["selected_template"],
@@ -935,7 +935,7 @@ def text_length_hint(barcode_text, module_width):
     if not barcode_text.strip():
         return ""
     if length > 25 and module_width > 0.4:
-        return "Text is long: consider thinner bars (0.25â€“0.35) or larger label width."
+        return "Text is long: consider thinner bars (0.25-0.35) or larger label width."
     if length > 35:
         return "Very long code: increase label width or visually split code."
     return ""
@@ -985,9 +985,9 @@ with tab1:
                 st.warning(f"Preview not available: {e}")
 
     with col_actions:
-        if st.button("ðŸ‘€ Generate PDF", key="preview_btn", use_container_width=True, disabled=bool(error_msg)):
+        if st.button("👀 Generate PDF", key="preview_btn", use_container_width=True, disabled=bool(error_msg)):
             try:
-                with st.spinner("Creating premium label PDFâ€¦"):
+                with st.spinner("Creating premium label PDF..."):
                     pdf_data = build_pdf(
                         barcode_type,
                         barcode_text,
@@ -1006,21 +1006,21 @@ with tab1:
                         rotation=rotation,
                         show_human_location=show_human_location,
                     )
-                st.success("âœ… PDF Generated!")
+                st.success("✅ PDF Generated!")
 
                 safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", barcode_text).strip("_")
                 if not safe_name:
                     safe_name = "label"
 
                 st.download_button(
-                    "ðŸ“¥ Download PDF",
+                    "📥 Download PDF",
                     data=pdf_data,
                     file_name=f"{safe_name}.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                 )
             except Exception as e:
-                st.error(f"âŒ Error: {e}")
+                st.error(f"❌ Error: {e}")
 
 # ===== TAB 2: BATCH =====
 with tab2:
@@ -1042,7 +1042,7 @@ with tab2:
         "Optional prefix to add if missing (e.g. W102/)", value="", key="batch_prefix"
     )
 
-    input_method = st.radio("Input Method:", ["ðŸ“ Text Area", "ðŸ“„ CSV/Excel File"], horizontal=True)
+    input_method = st.radio("Input Method:", ["📝 Text Area", "📄 CSV/Excel File"], horizontal=True)
 
     barcode_list = []
     df = None
@@ -1056,7 +1056,7 @@ with tab2:
     wh_column = None
     zone_column = None
 
-    if input_method == "ðŸ“ Text Area":
+    if input_method == "📝 Text Area":
         codes_text = st.text_area(
             "Enter location codes (one per line):",
             value="W102/W102-07-03-01-01\nW102/W102-07-03-01-02\nW102/W102-07-03-01-03",
@@ -1136,7 +1136,7 @@ with tab2:
                         index=saved_map.get("zone_idx", min(1, len(df.columns) - 1)),
                     )
 
-                if st.button("ðŸ’¾ Save mapping preset"):
+                if st.button("💾 Save mapping preset"):
                     st.session_state["csv_mappings"][mapping_name] = {
                         "code_idx": list(df.columns).index(code_column),
                         "use_product_col": use_product_col,
@@ -1167,12 +1167,12 @@ with tab2:
                 st.dataframe(df.head(10))
 
             except Exception as e:
-                st.error(f"âŒ Error reading file: {e}")
+                st.error(f"❌ Error reading file: {e}")
                 df = None
 
     st.markdown("---")
     st.subheader("CSV Template Helper")
-    if st.button("â¬‡ï¸ Download CSV Template"):
+    if st.button("⬇️ Download CSV Template"):
         sample = pd.DataFrame(
             {
                 "code": ["W102-07-03-01-01", "W102-07-03-01-02"],
@@ -1207,14 +1207,14 @@ with tab2:
                 valid_codes.append(code)
 
     if barcode_list:
-        st.info(f"ðŸ“Š Total codes input: **{len(barcode_list)}**")
-        st.write(f"âœ… Valid for {barcode_type}: {len(valid_codes)}")
-        st.write(f"âš ï¸ Invalid: {len(invalid_codes)}")
-        st.write(f"ðŸ” Duplicates detected: {len(duplicates)}")
+        st.info(f"📊 Total codes input: **{len(barcode_list)}**")
+        st.write(f"✅ Valid for {barcode_type}: {len(valid_codes)}")
+        st.write(f"⚠️ Invalid: {len(invalid_codes)}")
+        st.write(f"📋 Duplicates detected: {len(duplicates)}")
         if invalid_codes:
             with st.expander("View invalid codes"):
                 for code, msg in invalid_codes:
-                    st.write(f"- `{code}` â†’ {msg}")
+                    st.write(f"- `{code}` → {msg}")
         if duplicates:
             with st.expander("View duplicate codes"):
                 for code in duplicates:
@@ -1234,7 +1234,7 @@ with tab2:
         return current_zip, current_zip_file, zip_buffers, zip_index, current_count
 
     # Random sample test print (advanced)
-    if barcode_list and st.button("ðŸ§ª Generate random sample of 5 labels for test"):
+    if barcode_list and st.button("🧪 Generate random sample of 5 labels for test"):
         sample_codes = random.sample(barcode_list, min(5, len(barcode_list)))
         st.write("Random sample codes:", sample_codes)
         for code in sample_codes:
@@ -1268,7 +1268,7 @@ with tab2:
                 st.warning(f"Sample failed for {code}: {e}")
 
     if barcode_list and valid_codes:
-        if st.button("ðŸš€ Generate ZIP (All PDFs)", use_container_width=True, key="generate_zip_btn"):
+        if st.button("🚀 Generate ZIP (All PDFs)", use_container_width=True, key="generate_zip_btn"):
             try:
                 # Apply duplicate skipping if selected
                 if skip_duplicates:
@@ -1307,11 +1307,11 @@ with tab2:
                                 "zone": zone,
                             }
                         )
-                        status_text.text(f"âš ï¸ Skipped invalid {idx}/{total}: {code}")
+                        status_text.text(f"⚠️ Skipped invalid {idx}/{total}: {code}")
                         progress_bar.progress(idx / total)
                         continue
 
-                    status_text.text(f"â³ Generating {idx}/{total}: {code}")
+                    status_text.text(f"⏳ Generating {idx}/{total}: {code}")
                     try:
                         # use index on original arrays safely
                         row_idx = min(idx - 1, len(per_row_products) - 1)
@@ -1387,7 +1387,7 @@ with tab2:
                                 "zone": zone,
                             }
                         )
-                        st.warning(f"âš ï¸ Skipped {code}: {e}")
+                        st.warning(f"⚠️ Skipped {code}: {e}")
 
                     progress_bar.progress(idx / total)
 
@@ -1405,7 +1405,7 @@ with tab2:
                 error_count = sum(1 for r in log_records if r["status"] == "error")
 
                 st.success(
-                    f"âœ… Successfully processed {total} codes. "
+                    f"✅ Successfully processed {total} codes. "
                     f"Valid PDFs generated for {ok_count} codes. "
                     f"Invalid: {invalid_count}, Errors: {error_count}."
                 )
@@ -1439,7 +1439,7 @@ with tab2:
                     label_suffix = f"_{suffix}" if suffix else ""
                     file_name = f"barcode_labels_part{idx_zip}{label_suffix}.zip"
                     st.download_button(
-                        f"ðŸ“¦ Download ZIP part {idx_zip}{label_suffix}",
+                        f"📦 Download ZIP part {idx_zip}{label_suffix}",
                         data=data,
                         file_name=file_name,
                         mime="application/zip",
@@ -1453,19 +1453,18 @@ with tab2:
                     st.dataframe(log_df, use_container_width=True)
                     log_csv = log_df.to_csv(index=False).encode("utf-8")
                     st.download_button(
-                        "â¬‡ï¸ Download log CSV (all statuses)",
+                        "⬇️ Download log CSV (all statuses)",
                         data=log_csv,
                         file_name="barcode_batch_log.csv",
                         mime="text/csv",
                     )
 
             except Exception as e:
-                st.error(f"âŒ Error generating ZIPs: {e}")
+                st.error(f"❌ Error generating ZIPs: {e}")
     elif not barcode_list:
-        st.info("ðŸ‘† Enter or upload barcode codes above to get started")
+        st.info("👆 Enter or upload barcode codes above to get started")
 
 # Debug info
 if st.session_state["debug_mode"]:
     with st.expander("Debug info"):
         st.write("Session state:", st.session_state)
-
