@@ -474,10 +474,26 @@ def build_barcode_image(
             border=2,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
         )
-        qr.add_data(barcode_text)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        return img.convert("RGB")
+                      preview_img = build_label_preview_from_pdf(
+                    barcode_type=barcode_type,
+                    barcode_text=barcode_text,
+                    label_width_mm=label_width_mm,
+                    label_height_mm=label_height_mm,
+                    module_height=module_height,
+                    module_width=module_width,
+                    dpi_value=dpi_value,
+                    include_logo=include_logo,
+                    product_name=product_name,
+                    sku=sku,
+                    footer_text=footer_text,
+                    print_date=print_date,
+                    warehouse=warehouse,
+                    zone=zone,
+                    rotation=rotation,
+                    show_human_location=show_human_location,
+                )
+                st.image(preview_img, caption="🖨️ Complete Label Preview (Print-Ready)", use_container_width=True)
+
 
     code_cls_map = {
         "Code128": "code128",
@@ -1468,3 +1484,4 @@ with tab2:
 if st.session_state["debug_mode"]:
     with st.expander("Debug info"):
         st.write("Session state:", st.session_state)
+
