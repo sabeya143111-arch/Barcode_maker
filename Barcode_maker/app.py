@@ -609,10 +609,10 @@ def build_pdf(
 
     usable_w = rw - 8 * mm
     if include_logo and logo_img is not None:
-        logo_section_w = usable_w * 0.65
+        logo_section_w = usable_w * 0.70
         logo_x = rx + 4 * mm
 
-        lh_logo = band_h * 1.4
+        lh_logo = band_h * 1.8
         lw_logo = lh_logo
         ratio = logo_img.width / logo_img.height
         if lw_logo / lh_logo > ratio:
@@ -635,9 +635,9 @@ def build_pdf(
     # MAIN RED TEXT
     text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
-    text_size = int(band_h * 1.05)
-    text_size = min(text_size, 60)
-    text_size = max(text_size, 18)
+    text_size = int(band_h * 1.8)
+    text_size = min(text_size, 100)
+    text_size = max(text_size, 32)
     c.setFont("Helvetica-Bold", text_size)
     display_text = barcode_text if len(barcode_text) <= 40 else barcode_text[:37] + "..."
     tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
@@ -646,7 +646,7 @@ def build_pdf(
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
 
-    text_y = band_y + band_h / 2 - text_size / 3
+    text_y = band_y + band_h / 2 - text_size / 2.5
     text_cx = rx + rw / 2
     c.setFillColor(HexColor("#FF0000"))
     c.drawCentredString(text_cx, text_y, display_text)
