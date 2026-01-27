@@ -609,10 +609,10 @@ def build_pdf(
 
     usable_w = rw - 8 * mm
     if include_logo and logo_img is not None:
-        logo_section_w = usable_w * 0.40
+        logo_section_w = usable_w * 0.65
         logo_x = rx + 4 * mm
 
-        lh_logo = band_h * 0.99
+        lh_logo = band_h * 1.4
         lw_logo = lh_logo
         ratio = logo_img.width / logo_img.height
         if lw_logo / lh_logo > ratio:
