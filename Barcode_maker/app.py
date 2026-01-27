@@ -948,13 +948,19 @@ with st.sidebar:
 
 def text_length_hint(barcode_text, module_width):
     length = len(barcode_text.strip())
-    if not barcode_text.strip():
-        return ""
-    if length > 25 and module_width > 0.4:
-        return "Text is long: consider thinner bars (0.25–0.35) or larger label width."
-    if length > 35:
-        return "Very long code: increase label width or visually split code."
-    return ""
+          if barcode_text.strip() and not error_msg:
+            try:
+                preview_img = build_barcode_image(
+                    barcode_type,
+                    barcode_text,
+                    module_height=module_height,
+                    module_width=module_width,
+                    dpi_value=dpi_value,
+                )
+                st.image(preview_img, caption=f"Live {barcode_type} Preview", use_column_width=True)
+            except Exception as e:
+                st.warning(f"Preview not available: {e}")
+
 
 
 # ===== TAB 1: SINGLE =====
@@ -1484,4 +1490,5 @@ with tab2:
 if st.session_state["debug_mode"]:
     with st.expander("Debug info"):
         st.write("Session state:", st.session_state)
+
 
