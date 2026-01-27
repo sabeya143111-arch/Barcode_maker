@@ -744,8 +744,8 @@ st.markdown(
         <div>
           <div class="lux-title">SWAG BARCODE MAKER</div>
           <div class="lux-subtitle">
-            Design ultraâ€‘clean warehouse labels with logo + multiâ€‘type barcodes (Code128, EAN, QR).
-            Single or batch â€” export readyâ€‘toâ€‘print PDFs & logs in one click.
+            Design ultra clean warehouse labels with logo + multitype barcodes (Code128, EAN, QR).
+            Single or batch a export ready to print PDFs & logs in one click.
           </div>
           <div class="lux-chip-row">
             <span class="lux-chip">Code128 Â· EAN Â· QR</span>
@@ -1468,3 +1468,4 @@ with tab2:
 if st.session_state["debug_mode"]:
     with st.expander("Debug info"):
         st.write("Session state:", st.session_state)
+
