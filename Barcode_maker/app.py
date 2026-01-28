@@ -737,11 +737,18 @@ OTP_EXPIRY_MINUTES = 10
 # ===== EMAIL CONFIGURATION =====
 # Gmail SMTP Settings (for Gmail, use "App Password" instead of regular password)
 # See: https://support.google.com/accounts/answer/185833
-EMAIL_SENDER = os.getenv("EMAIL_SENDER", "your-email@gmail.com")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "your-app-password")
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-
+# Load email settings from Streamlit secrets
+try:
+    EMAIL_SENDER = st.secrets["email"]["SMTP_EMAIL"]
+    EMAIL_PASSWORD = st.secrets["email"]["SMTP_PASSWORD"]
+    SMTP_SERVER = st.secrets["email"]["SMTP_SERVER"]
+    SMTP_PORT = st.secrets["email"]["SMTP_PORT"]
+except Exception:
+    # Fallback to environment variables if secrets not configured
+    EMAIL_SENDER = os.getenv("EMAIL_SENDER", "your-email@gmail.com")
+    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "your-app-password")
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 # Alternative email providers:
 # Outlook/Hotmail: smtp.outlook.com:587
 # Yahoo: smtp.mail.yahoo.com:587
@@ -1779,3 +1786,4 @@ with tab2:
 if st.session_state["debug_mode"]:
     with st.expander("Debug info"):
         st.write("Session state:", st.session_state)
+
