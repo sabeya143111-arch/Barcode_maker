@@ -454,7 +454,7 @@ def human_friendly_location(code: str) -> str:
     parts = re.split(r"[-/]", code)
     # Example pattern: W102-07-03-01-01
     if len(parts) >= 5:
-        return f"Rack {parts[0]} · Aisle {parts[1]} · Bay {parts[2]} · Shelf {parts[3]} · Bin {parts[4]}"
+        return f"Rack {parts[0]} | Aisle {parts[1]} | Bay {parts[2]} | Shelf {parts[3]} | Bin {parts[4]}"
     return code
 
 
@@ -674,16 +674,23 @@ def build_pdf(
         meta_bits.append(zone.strip())
     if show_human_location:
         meta_bits.append(human_friendly_location(barcode_text))
-    extra = "  •  ".join(meta_bits)
-    extra_y = text_y - text_size * 0.85
+    extra = " | ".join(meta_bits)
+    extra_y = text_y - text_size * 1.15
     if extra:
-        small_font = 9
+        small_font = 8
         c.setFont("Helvetica", small_font)
         c.setFillColor(black)
-        # Ensure minimum gap from red text
-        min_gap = text_size * 0.15
-        if (text_y - extra_y) < (text_size + min_gap):
-            extra_y = text_y - text_size - min_gap
+        
+        # Ensure proper spacing from red text and footer
+        footer_y = m + 2 * mm
+        min_y = footer_y + 4 * mm
+        if extra_y < min_y:
+            extra_y = min_y
+        
+        # Truncate if too long
+        if len(extra) > 85:
+            extra = extra[:82] + "..."
+        
         c.drawCentredString(text_cx, extra_y, extra)
 
     # FOOTER TEXT + DATE SECTION
