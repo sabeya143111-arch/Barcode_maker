@@ -17,6 +17,10 @@ import json
 from collections import Counter
 import random
 import hashlib
+import smtplib
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 try:
     import qrcode
@@ -730,6 +734,20 @@ def build_pdf(
 USER_FILE = Path("users.json")
 OTP_EXPIRY_MINUTES = 10
 
+# ===== EMAIL CONFIGURATION =====
+# Gmail SMTP Settings (for Gmail, use "App Password" instead of regular password)
+# See: https://support.google.com/accounts/answer/185833
+EMAIL_SENDER = os.getenv("EMAIL_SENDER", "your-email@gmail.com")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "your-app-password")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+
+# Alternative email providers:
+# Outlook/Hotmail: smtp.outlook.com:587
+# Yahoo: smtp.mail.yahoo.com:587
+# SendGrid: smtp.sendgrid.net:587
+# AWS SES: email-smtp.{region}.amazonaws.com:587
+
 def load_users():
     """Load user database from JSON file."""
     if USER_FILE.exists():
@@ -751,10 +769,84 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def send_otp_notification(email, otp):
-    """Send OTP to user (currently displays in app for development)."""
-    # In production, integrate with email service (SendGrid, AWS SES, etc.)
-    # For now, store in session state for display
-    return otp
+    """Send OTP to user via email using SMTP."""
+    try:
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "🔐 Your Swag Barcode Maker OTP Code"
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = email
+        
+        # Plain text version
+        text = f"""
+Your Swag Barcode Maker OTP Code:
+
+{otp}
+
+⏱️ This code is valid for 5 minutes.
+
+If you didn't request this code, please ignore this email.
+
+---
+Swag Barcode Maker Authentication System
+"""
+        
+        # HTML version (prettier)
+        html = f"""
+        <html>
+          <head></head>
+          <body style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px;">
+              <h2 style="color: #333; text-align: center; margin-bottom: 30px;">🔐 Swag Barcode Maker</h2>
+              
+              <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+                Your One-Time Password (OTP) is:
+              </p>
+              
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+                <p style="font-size: 12px; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">One-Time Password</p>
+                <p style="font-size: 48px; font-weight: bold; margin: 0; letter-spacing: 8px;">{otp}</p>
+              </div>
+              
+              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 30px; border-radius: 5px;">
+                <p style="color: #856404; margin: 0; font-size: 14px;">
+                  ⏱️ <strong>Valid for 5 minutes only</strong>
+                </p>
+              </div>
+              
+              <p style="color: #999; font-size: 12px; text-align: center; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+                If you didn't request this code, please ignore this email.<br>
+                <strong>Never share this code with anyone.</strong>
+              </p>
+              
+              <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
+                Swag Barcode Maker © 2026 | Premium Label Design System
+              </p>
+            </div>
+          </body>
+        </html>
+        """
+        
+        # Attach both versions
+        part1 = MIMEText(text, 'plain')
+        part2 = MIMEText(html, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        # Send email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Secure connection
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        
+        return True, "OTP sent to email successfully"
+    
+    except smtplib.SMTPAuthenticationError:
+        return False, "❌ Email authentication failed. Check EMAIL_SENDER and EMAIL_PASSWORD in environment variables."
+    except smtplib.SMTPException as e:
+        return False, f"❌ SMTP error: {str(e)}"
+    except Exception as e:
+        return False, f"❌ Failed to send email: {str(e)}"
 
 def signup_user(name, email, password):
     """Register a new user."""
@@ -830,17 +922,24 @@ if not st.session_state['authenticated']:
                 success, msg = verify_login(login_email, login_password)
                 
                 if success:
-                    # Credentials valid, generate OTP
+                    # Credentials valid, generate OTP and send via email
                     otp = generate_otp()
                     st.session_state['otp_code'] = otp
                     st.session_state['otp_expiry'] = datetime.now().timestamp() + 300  # 5 min
                     st.session_state['otp_sent'] = True
                     st.session_state['temp_email'] = login_email
                     
-                    # Show OTP (in production, send via email/SMS)
-                    st.success("✅ OTP sent successfully!")
-                    st.info(f"📱 Your OTP: **{otp}**")
-                    st.warning("⏱️ OTP valid for 5 minutes")
+                    # Send OTP via email
+                    email_success, email_msg = send_otp_notification(login_email, otp)
+                    
+                    if email_success:
+                        st.success("✅ OTP sent to your email!")
+                        st.info(f"📧 Check your email at **{login_email}**")
+                        st.warning("⏱️ OTP valid for 5 minutes")
+                    else:
+                        st.error(email_msg)
+                        st.warning("⚠️ Email configuration issue. Contact administrator.")
+                    
                     st.rerun()
                 else:
                     st.error(f"❌ {msg}")
@@ -873,8 +972,15 @@ if not st.session_state['authenticated']:
                     otp = generate_otp()
                     st.session_state['otp_code'] = otp
                     st.session_state['otp_expiry'] = datetime.now().timestamp() + 300
-                    st.info(f"📱 New OTP: **{otp}**")
-                    st.success("✅ New OTP sent!")
+                    
+                    # Resend via email
+                    email_success, email_msg = send_otp_notification(st.session_state['temp_email'], otp)
+                    
+                    if email_success:
+                        st.success("✅ New OTP sent to your email!")
+                        st.info(f"📧 Check **{st.session_state['temp_email']}**")
+                    else:
+                        st.error(email_msg)
     
     # SIGNUP TAB
     with tab2:
