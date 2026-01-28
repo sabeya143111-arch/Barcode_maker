@@ -12,10 +12,11 @@ from urllib.request import urlopen
 import re
 import zipfile
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from collections import Counter
 import random
+import hashlib
 
 try:
     import qrcode
@@ -725,6 +726,75 @@ def build_pdf(
 
 
 # ===== PAGE CONFIG =====
+# ===== AUTHENTICATION SYSTEM =====
+USER_FILE = Path("users.json")
+OTP_EXPIRY_MINUTES = 10
+
+def load_users():
+    """Load user database from JSON file."""
+    if USER_FILE.exists():
+        with open(USER_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    """Save user database to JSON file."""
+    with open(USER_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def hash_password(password):
+    """Hash password using SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def generate_otp():
+    """Generate a 6-digit OTP."""
+    return str(random.randint(100000, 999999))
+
+def send_otp_notification(email, otp):
+    """Send OTP to user (currently displays in app for development)."""
+    # In production, integrate with email service (SendGrid, AWS SES, etc.)
+    # For now, store in session state for display
+    return otp
+
+def signup_user(name, email, password):
+    """Register a new user."""
+    users = load_users()
+    if email in users:
+        return False, "Email already registered"
+    users[email] = {
+        "name": name,
+        "password": hash_password(password),
+        "created_at": datetime.now().isoformat(),
+        "verified": False
+    }
+    save_users(users)
+    return True, "Signup successful! Please login."
+
+def verify_login(email, password):
+    """Verify login credentials."""
+    users = load_users()
+    if email not in users:
+        return False, "Email not found"
+    if users[email]["password"] != hash_password(password):
+        return False, "Invalid password"
+    return True, users[email]["name"]
+
+# Initialize authentication session state
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = None
+if 'otp_sent' not in st.session_state:
+    st.session_state['otp_sent'] = False
+if 'otp_code' not in st.session_state:
+    st.session_state['otp_code'] = None
+if 'otp_expiry' not in st.session_state:
+    st.session_state['otp_expiry'] = None
+if 'temp_email' not in st.session_state:
+    st.session_state['temp_email'] = None
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'login'  # 'login', 'signup', 'otp', 'app'
+
 st.set_page_config(page_title="Swag Barcode Maker", page_icon="🏷", layout="wide")
 
 # ===== SESSION STATE =====
@@ -739,8 +809,122 @@ if "csv_mappings" not in st.session_state:
 if "debug_mode" not in st.session_state:
     st.session_state["debug_mode"] = False
 
+
+# ===== AUTHENTICATION GATE =====
+if not st.session_state['authenticated']:
+    st.title("🔐 Swag Barcode Maker - Authentication")
+    st.markdown("Please login to access the barcode generator")
+    
+    tab1, tab2 = st.tabs(["🔑 Login", "📝 Signup"])
+    
+    # LOGIN TAB
+    with tab1:
+        st.subheader("Login to Your Account")
+        
+        if not st.session_state.get('otp_sent', False):
+            login_email = st.text_input("Email", key="login_email")
+            login_password = st.text_input("Password", type="password", key="login_password")
+            
+            if st.button("🔐 Send OTP", key="send_otp_btn", use_container_width=True):
+                # Verify credentials using existing function
+                success, msg = verify_login(login_email, login_password)
+                
+                if success:
+                    # Credentials valid, generate OTP
+                    otp = generate_otp()
+                    st.session_state['otp_code'] = otp
+                    st.session_state['otp_expiry'] = datetime.now().timestamp() + 300  # 5 min
+                    st.session_state['otp_sent'] = True
+                    st.session_state['temp_email'] = login_email
+                    
+                    # Show OTP (in production, send via email/SMS)
+                    st.success("✅ OTP sent successfully!")
+                    st.info(f"📱 Your OTP: **{otp}**")
+                    st.warning("⏱️ OTP valid for 5 minutes")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {msg}")
+        
+        # OTP Verification Section
+        if st.session_state.get('otp_sent', False):
+            st.markdown("---")
+            st.subheader("🔢 Enter OTP")
+            st.info(f"OTP sent to: {st.session_state.get('temp_email', '')}")
+            
+            entered_otp = st.text_input("Enter 6-digit OTP", max_chars=6, key="otp_input")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Verify OTP", key="verify_otp_btn", use_container_width=True):
+                    if datetime.now().timestamp() > st.session_state['otp_expiry']:
+                        st.error("❌ OTP expired. Please request new OTP.")
+                        st.session_state['otp_sent'] = False
+                    elif entered_otp == st.session_state['otp_code']:
+                        st.session_state['authenticated'] = True
+                        st.session_state['username'] = st.session_state['temp_email']
+                        st.session_state['otp_sent'] = False
+                        st.success("✅ Login successful! Redirecting...")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid OTP")
+            
+            with col2:
+                if st.button("🔄 Resend OTP", key="resend_otp_btn", use_container_width=True):
+                    otp = generate_otp()
+                    st.session_state['otp_code'] = otp
+                    st.session_state['otp_expiry'] = datetime.now().timestamp() + 300
+                    st.info(f"📱 New OTP: **{otp}**")
+                    st.success("✅ New OTP sent!")
+    
+    # SIGNUP TAB
+    with tab2:
+        st.subheader("Create New Account")
+        
+        signup_name = st.text_input("Full Name", key="signup_name")
+        signup_email = st.text_input("Email Address", key="signup_email")
+        signup_password = st.text_input("Password", type="password", key="signup_password")
+        signup_password_confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
+        
+        if st.button("📝 Create Account", key="signup_btn", use_container_width=True):
+            # Validation
+            if not signup_name or not signup_email or not signup_password:
+                st.error("❌ All fields are required")
+            elif signup_password != signup_password_confirm:
+                st.error("❌ Passwords don't match")
+            elif len(signup_password) < 6:
+                st.error("❌ Password must be at least 6 characters")
+            elif '@' not in signup_email:
+                st.error("❌ Invalid email format")
+            else:
+                # Use signup_user function to save with hashed password
+                success, msg = signup_user(signup_name, signup_email, signup_password)
+                if success:
+                    st.success("✅ Account created successfully! Please login.")
+                    st.balloons()
+                else:
+                    st.error(f"❌ {msg}")
+    
+    st.stop()  # Stop execution here until authenticated
+
+
+# ===== AUTHENTICATED USER SECTION =====
 # ===== SIDEBAR TOP (GLOBAL) =====
 with st.sidebar:
+    # Logout button (visible only when authenticated)
+    col_user, col_logout = st.columns([2, 1])
+    with col_user:
+        st.success(f"👤 {st.session_state['username']}")
+    with col_logout:
+        if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
+            st.session_state['authenticated'] = False
+            st.session_state['username'] = None
+            st.session_state['otp_sent'] = False
+            st.session_state['otp_code'] = None
+            st.session_state['otp_expiry'] = None
+            st.session_state['temp_email'] = None
+            st.rerun()
+    
+    st.markdown("---")
     st.header("App Mode & Theme")
     mode = st.selectbox("Mode", ["Picker View", "Supervisor View"])
     theme = st.selectbox("Theme", ["Luxury Dark", "Clean Light"], index=0)
