@@ -609,10 +609,15 @@ def build_pdf(
 
     usable_w = rw - 8 * mm
     if include_logo and logo_img is not None:
-        logo_section_w = usable_w * 0.30
+        # allocate about ~32% of usable band width to the logo
+        logo_section_w = usable_w * 0.32
         logo_x = rx + 4 * mm
 
-        lh_logo = band_h * 2.5
+        # propose a slightly larger intended logo height, but enforce a strict cap
+        lh_logo = band_h * 1.3
+        # ensure logo stays inside the band visually (cap at 95% of band height)
+        if lh_logo > band_h * 0.95:
+            lh_logo = band_h * 0.95
         lw_logo = lh_logo
         ratio = logo_img.width / logo_img.height
         if lw_logo / lh_logo > ratio:
@@ -635,19 +640,22 @@ def build_pdf(
     # MAIN RED TEXT
     text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
-    text_size = int(band_h * 2.8)
-    text_size = min(text_size, 140)
-    text_size = max(text_size, 45)
+    # slightly larger but balanced text sizing relative to band height
+    text_size = int(band_h * 1.6)
+    text_size = min(text_size, 80)
+    text_size = max(text_size, 28)
     c.setFont("Helvetica-Bold", text_size)
     display_text = barcode_text if len(barcode_text) <= 40 else barcode_text[:37] + "..."
     tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
-    while tw > max_tw and text_size > 14:
+    while tw > max_tw and text_size > 18:
         text_size -= 2
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
 
-    text_y = band_y + band_h / 2 - text_size / 2.2
-    text_cx = rx + rw / 2
+    # position vertically centered in band (slightly adjusted offset)
+    text_y = band_y + band_h / 2 - text_size / 2.8
+    # center text in the remaining space AFTER the logo section
+    text_cx = rx + logo_section_w + (rw - logo_section_w) / 2
     c.setFillColor(HexColor("#FF0000"))
     c.drawCentredString(text_cx, text_y, display_text)
     c.setFillColor(black)
@@ -667,7 +675,7 @@ def build_pdf(
     extra = " • ".join(meta_bits)
     extra_y = text_y - text_size * 0.65
     if extra:
-        small_font = 11
+        small_font = 10
         c.setFont("Helvetica", small_font)
         c.setFillColor(black)
         c.drawCentredString(text_cx, extra_y, extra)
