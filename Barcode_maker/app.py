@@ -613,8 +613,8 @@ def build_pdf(
         logo_section_w = usable_w * 0.32
         logo_x = rx + 4 * mm
 
-        # propose a larger intended logo height (almost 2x), but enforce a strict cap
-        lh_logo = band_h * 1.9
+        # propose a larger intended logo height (2.2x), but enforce a strict cap
+        lh_logo = band_h * 2.2
         # ensure logo stays inside the band visually (cap at 95% of band height)
         if lh_logo > band_h * 0.95:
             lh_logo = band_h * 0.95
@@ -643,9 +643,9 @@ def build_pdf(
     text_start_x = logo_x + logo_section_w + (1 * mm if include_logo else 0)
     max_tw = rx + rw - text_start_x - 3 * mm
     # slightly larger but balanced text sizing relative to band height
-    text_size = int(band_h * 1.6)
-    text_size = min(text_size, 80)
-    text_size = max(text_size, 28)
+    text_size = int(band_h * 2.4)
+    text_size = min(text_size, 120)
+    text_size = max(text_size, 40)
     c.setFont("Helvetica-Bold", text_size)
     display_text = barcode_text if len(barcode_text) <= 40 else barcode_text[:37] + "..."
     tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
@@ -654,8 +654,8 @@ def build_pdf(
         c.setFont("Helvetica-Bold", text_size)
         tw = c.stringWidth(display_text, "Helvetica-Bold", text_size)
 
-    # position vertically centered in band (slightly adjusted offset)
-    text_y = band_y + band_h / 2 - text_size / 2.8
+    # position vertically centered in band (adjusted for larger text)
+    text_y = band_y + band_h / 2 - text_size / 2.5
     # center text in the remaining space AFTER the logo section
     text_cx = rx + logo_section_w + (rw - logo_section_w) / 2
     c.setFillColor(HexColor("#FF0000"))
