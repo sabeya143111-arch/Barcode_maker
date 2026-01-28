@@ -613,8 +613,8 @@ def build_pdf(
         logo_section_w = usable_w * 0.32
         logo_x = rx + 4 * mm
 
-        # propose a slightly larger intended logo height, but enforce a strict cap
-        lh_logo = band_h * 1.3
+        # propose a larger intended logo height (almost 2x), but enforce a strict cap
+        lh_logo = band_h * 1.9
         # ensure logo stays inside the band visually (cap at 95% of band height)
         if lh_logo > band_h * 0.95:
             lh_logo = band_h * 0.95
@@ -624,7 +624,9 @@ def build_pdf(
             lw_logo = lh_logo * ratio
         else:
             lh_logo = lw_logo / ratio
+        # center logo inside its allocated section
         logo_y = band_y + (band_h - lh_logo) / 2
+        logo_x = rx + 4 * mm + max(0, (logo_section_w - lw_logo) / 2)
         c.drawImage(
             logo_ir,
             logo_x,
@@ -672,12 +674,16 @@ def build_pdf(
         meta_bits.append(zone.strip())
     if show_human_location:
         meta_bits.append(human_friendly_location(barcode_text))
-    extra = " • ".join(meta_bits)
-    extra_y = text_y - text_size * 0.65
+    extra = "  •  ".join(meta_bits)
+    extra_y = text_y - text_size * 0.85
     if extra:
-        small_font = 10
+        small_font = 9
         c.setFont("Helvetica", small_font)
         c.setFillColor(black)
+        # Ensure minimum gap from red text
+        min_gap = text_size * 0.15
+        if (text_y - extra_y) < (text_size + min_gap):
+            extra_y = text_y - text_size - min_gap
         c.drawCentredString(text_cx, extra_y, extra)
 
     # FOOTER TEXT + DATE SECTION
